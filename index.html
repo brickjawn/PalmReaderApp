@@ -780,23 +780,63 @@
                 }
             }
             
+            // Enhanced image quality assessment
+            function assessImageQuality(imageElement) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = imageElement.naturalWidth;
+                canvas.height = imageElement.naturalHeight;
+                ctx.drawImage(imageElement, 0, 0);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // Calculate image sharpness (edge detection)
+                let sharpness = 0;
+                for (let i = 0; i < data.length - 4; i += 4) {
+                    const diff = Math.abs(data[i] - data[i + 4]);
+                    sharpness += diff;
+                }
+                sharpness = sharpness / (data.length / 4);
+                
+                // Calculate brightness and contrast
+                let brightness = 0;
+                let contrast = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                    const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    brightness += gray;
+                }
+                brightness = brightness / (data.length / 4);
+                
+                // Calculate contrast
+                let variance = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                    const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    variance += Math.pow(gray - brightness, 2);
+                }
+                contrast = Math.sqrt(variance / (data.length / 4));
+                
+                return {
+                    sharpness,
+                    brightness,
+                    contrast,
+                    resolution: canvas.width * canvas.height,
+                    aspectRatio: canvas.width / canvas.height,
+                    score: (sharpness * 0.4) + (contrast * 0.3) + (brightness > 50 && brightness < 200 ? 50 : 0) + (canvas.width > 800 ? 20 : 0)
+                };
+            }
+            
             // Validate if image contains a hand
             async function validateHandImage(imageElement) {
                 return new Promise((resolve) => {
                     if (!handDetectionReady) {
-                        // Fallback validation - basic image checks
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        canvas.width = imageElement.naturalWidth;
-                        canvas.height = imageElement.naturalHeight;
-                        ctx.drawImage(imageElement, 0, 0);
+                        // Enhanced fallback validation
+                        const quality = assessImageQuality(imageElement);
+                        const isReasonableSize = quality.resolution > 40000; // At least 200x200
+                        const isReasonableAspectRatio = quality.aspectRatio > 0.5 && quality.aspectRatio < 2;
+                        const hasGoodQuality = quality.score > 30;
                         
-                        // Basic heuristics - check if image is reasonable size and aspect ratio
-                        const aspectRatio = canvas.width / canvas.height;
-                        const isReasonableSize = canvas.width > 200 && canvas.height > 200;
-                        const isReasonableAspectRatio = aspectRatio > 0.5 && aspectRatio < 2;
-                        
-                        resolve(isReasonableSize && isReasonableAspectRatio);
+                        resolve(isReasonableSize && isReasonableAspectRatio && hasGoodQuality);
                         return;
                     }
                     
@@ -825,114 +865,196 @@
                 });
             }
             
-            // Show error message
-            function showErrorMessage(message, hand) {
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 max-w-md text-center';
-                errorDiv.innerHTML = `
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <span>${message}</span>
-                    </div>
-                `;
-                
-                document.body.appendChild(errorDiv);
-                
-                // Remove error message after 4 seconds
-                setTimeout(() => {
-                    if (errorDiv.parentNode) {
-                        errorDiv.parentNode.removeChild(errorDiv);
-                    }
-                }, 4000);
-            }
-            
-            // Initialize hand detection
-            initializeHandDetection();
-
-            // Navigation Functions
-            function showScreen(screenElement) {
-                console.log('Showing screen:', screenElement?.id);
-                if (!screenElement) {
-                    console.error('Screen element is null');
-                    return;
-                }
-                [welcomeScreen, uploadScreen, analyzingScreen, mainContentScreen].forEach(s => {
-                    if (s) {
-                        s.classList.add('hidden');
-                        console.log('Hiding screen:', s.id);
-                    }
-                });
-                screenElement.classList.remove('hidden');
-                console.log('Removed hidden class from:', screenElement.id);
-            }
-
-            function setActiveTab(activeTabButton, activeContentElement) {
-                if (!activeTabButton || !activeContentElement) return;
-                [tabPalmLines, tabElement, tabAstro].forEach(btn => {
-                    if (btn) btn.classList.remove('active');
-                });
-                activeTabButton.classList.add('active');
-
-                [palmLinesContent, elementTypeContent, astroPalmistryContent].forEach(content => {
-                    if (content) content.classList.add('hidden');
-                });
-                activeContentElement.classList.remove('hidden');
-            }
-
-            // Add these functions before the event listeners
-            function resetAppState() {
-                console.log('Resetting app state');
-                // Reset uploaded images
-                uploadedImages.left = null;
-                uploadedImages.right = null;
-                
-                // Reset preview images
-                if (leftHandPreview) {
-                    leftHandPreview.src = '#';
-                    leftHandPreview.classList.add('hidden');
-                }
-                if (rightHandPreview) {
-                    rightHandPreview.src = '#';
-                    rightHandPreview.classList.add('hidden');
-                }
-                
-                // Reset file inputs
-                if (leftHandInput) leftHandInput.value = '';
-                if (rightHandInput) rightHandInput.value = '';
-                
-                // Hide remove buttons
-                if (removeLeftImageButton) removeLeftImageButton.classList.add('hidden');
-                if (removeRightImageButton) removeRightImageButton.classList.add('hidden');
-                
-                // Reset analysis button
-                if (startAnalysisButton) {
-                    startAnalysisButton.disabled = true;
-                    startAnalysisButton.classList.add('opacity-50', 'cursor-not-allowed');
-                }
-                
-                // Reset upload status
-                if (uploadStatus) {
-                    uploadStatus.textContent = "Please upload both hands for a complete reading.";
-                    uploadStatus.className = "text-sm text-gray-500 mt-2";
-                }
-            }
-
+            // Enhanced palm line analysis with detailed characteristics
             function simulatePalmLineAnalysis(hand) {
-                console.log(`Simulating palm line analysis for ${hand} hand`);
-                palmData.palmLineDefinitions.forEach(line => {
-                    const options = line.options;
-                    const randomOption = options[Math.floor(Math.random() * options.length)];
-                    userSelections.palmLines[hand][line.id] = randomOption.value;
-                });
+                console.log(`Simulating enhanced palm line analysis for ${hand} hand`);
+                
+                // Generate comprehensive line characteristics with more detail
+                const lineCharacteristics = {
+                    lifeLine: {
+                        depth: ['very_deep', 'deep', 'moderate', 'shallow'][Math.floor(Math.random() * 4)],
+                        length: ['very_long', 'long', 'moderate', 'short'][Math.floor(Math.random() * 4)],
+                        clarity: ['very_clear', 'clear', 'somewhat_clear', 'unclear'][Math.floor(Math.random() * 4)],
+                        curve: ['wide_curve', 'moderate_curve', 'slight_curve', 'straight'][Math.floor(Math.random() * 4)],
+                        breaks: ['none', 'minor', 'moderate', 'major'][Math.floor(Math.random() * 4)],
+                        islands: ['none', 'few', 'several', 'many'][Math.floor(Math.random() * 4)],
+                        branches: ['none', 'upward', 'downward', 'multiple'][Math.floor(Math.random() * 4)],
+                        // Additional detailed characteristics
+                        start_position: ['high', 'middle', 'low'][Math.floor(Math.random() * 3)],
+                        end_position: ['wrist', 'thumb_base', 'middle'][Math.floor(Math.random() * 3)],
+                        texture: ['smooth', 'slightly_rough', 'chain_like'][Math.floor(Math.random() * 3)],
+                        color_intensity: ['strong', 'moderate', 'faint'][Math.floor(Math.random() * 3)]
+                    },
+                    headLine: {
+                        length: ['very_long', 'long', 'moderate', 'short'][Math.floor(Math.random() * 4)],
+                        direction: ['straight', 'slightly_curved', 'curved', 'very_curved'][Math.floor(Math.random() * 4)],
+                        depth: ['very_deep', 'deep', 'moderate', 'shallow'][Math.floor(Math.random() * 4)],
+                        separation: ['joined', 'slightly_separated', 'separated', 'widely_separated'][Math.floor(Math.random() * 4)],
+                        ending: ['straight', 'forked', 'curved_down', 'multiple_branches'][Math.floor(Math.random() * 4)],
+                        islands: ['none', 'few', 'several'][Math.floor(Math.random() * 3)],
+                        chains: ['none', 'beginning', 'middle', 'throughout'][Math.floor(Math.random() * 4)],
+                        // Additional characteristics
+                        slope: ['steep', 'moderate', 'gentle'][Math.floor(Math.random() * 3)],
+                        connection_strength: ['strong', 'weak', 'disconnected'][Math.floor(Math.random() * 3)],
+                        secondary_lines: ['none', 'few', 'many'][Math.floor(Math.random() * 3)]
+                    },
+                    heartLine: {
+                        curve: ['high_curve', 'moderate_curve', 'slight_curve', 'straight'][Math.floor(Math.random() * 4)],
+                        length: ['very_long', 'long', 'moderate', 'short'][Math.floor(Math.random() * 4)],
+                        depth: ['very_deep', 'deep', 'moderate', 'shallow'][Math.floor(Math.random() * 4)],
+                        ending: ['under_jupiter', 'between_jupiter_saturn', 'under_saturn', 'forked'][Math.floor(Math.random() * 4)],
+                        branches: ['none', 'upward', 'downward', 'multiple'][Math.floor(Math.random() * 4)],
+                        chains: ['none', 'few', 'many'][Math.floor(Math.random() * 3)],
+                        islands: ['none', 'few', 'several'][Math.floor(Math.random() * 3)],
+                        // Additional characteristics
+                        start_position: ['high', 'middle', 'low'][Math.floor(Math.random() * 3)],
+                        quality: ['clear', 'broken', 'wavy'][Math.floor(Math.random() * 3)],
+                        crosses: ['none', 'few', 'several'][Math.floor(Math.random() * 3)]
+                    },
+                    fateLine: {
+                        presence: ['strong', 'moderate', 'weak', 'absent'][Math.floor(Math.random() * 4)],
+                        origin: ['wrist', 'life_line', 'mount_moon', 'middle_palm'][Math.floor(Math.random() * 4)],
+                        direction: ['straight', 'curved', 'wavy'][Math.floor(Math.random() * 3)],
+                        breaks: ['none', 'minor', 'major', 'multiple'][Math.floor(Math.random() * 4)],
+                        branches: ['none', 'few', 'many'][Math.floor(Math.random() * 3)],
+                        islands: ['none', 'few', 'several'][Math.floor(Math.random() * 3)],
+                        // Additional characteristics
+                        termination: ['head_line', 'heart_line', 'finger_base'][Math.floor(Math.random() * 3)],
+                        strength: ['consistent', 'varying', 'intermittent'][Math.floor(Math.random() * 3)],
+                        timing_marks: ['clear', 'faint', 'none'][Math.floor(Math.random() * 3)]
+                    },
+                    sunLine: {
+                        presence: ['strong', 'moderate', 'weak', 'absent'][Math.floor(Math.random() * 4)],
+                        origin: ['heart_line', 'head_line', 'life_line', 'wrist'][Math.floor(Math.random() * 4)],
+                        clarity: ['very_clear', 'clear', 'faint'][Math.floor(Math.random() * 3)],
+                        branches: ['none', 'few', 'many'][Math.floor(Math.random() * 3)],
+                        // Additional characteristics
+                        parallel_lines: ['none', 'one', 'multiple'][Math.floor(Math.random() * 3)],
+                        crosses: ['none', 'few'][Math.floor(Math.random() * 2)],
+                        stars: ['none', 'present'][Math.floor(Math.random() * 2)]
+                    },
+                    marriageLines: {
+                        number: ['none', 'one', 'two', 'three_or_more'][Math.floor(Math.random() * 4)],
+                        depth: ['deep', 'moderate', 'shallow'][Math.floor(Math.random() * 3)],
+                        length: ['long', 'moderate', 'short'][Math.floor(Math.random() * 3)],
+                        direction: ['straight', 'curved_up', 'curved_down'][Math.floor(Math.random() * 3)],
+                        // Additional characteristics
+                        spacing: ['close', 'moderate', 'wide'][Math.floor(Math.random() * 3)],
+                        intersections: ['none', 'few'][Math.floor(Math.random() * 2)],
+                        forks: ['none', 'beginning', 'end'][Math.floor(Math.random() * 3)]
+                    },
+                    travelLines: {
+                        number: ['none', 'few', 'several', 'many'][Math.floor(Math.random() * 4)],
+                        clarity: ['clear', 'moderate', 'faint'][Math.floor(Math.random() * 3)],
+                        // Additional characteristics
+                        direction: ['horizontal', 'diagonal', 'mixed'][Math.floor(Math.random() * 3)],
+                        connection: ['life_line', 'fate_line', 'independent'][Math.floor(Math.random() * 3)]
+                    },
+                    // Additional minor lines for comprehensive reading
+                    healthLine: {
+                        presence: ['strong', 'moderate', 'weak', 'absent'][Math.floor(Math.random() * 4)],
+                        clarity: ['clear', 'broken', 'wavy'][Math.floor(Math.random() * 3)],
+                        position: ['close_life_line', 'middle_palm', 'outer_edge'][Math.floor(Math.random() * 3)]
+                    },
+                    intuitionLine: {
+                        presence: ['strong', 'moderate', 'weak', 'absent'][Math.floor(Math.random() * 4)],
+                        curve: ['pronounced', 'moderate', 'slight'][Math.floor(Math.random() * 3)]
+                    },
+                    moneyLines: {
+                        number: ['none', 'few', 'several'][Math.floor(Math.random() * 3)],
+                        clarity: ['clear', 'faint'][Math.floor(Math.random() * 2)]
+                    }
+                };
+                
+                userSelections.palmLines[hand] = lineCharacteristics;
+                console.log(`Generated comprehensive palm line analysis for ${hand} hand:`, lineCharacteristics);
             }
 
             function simulateElementalHandAnalysis(hand) {
                 console.log(`Simulating elemental hand analysis for ${hand} hand`);
-                const elementOptions = palmData.elementHandDefinitions[0].options;
-                const randomElement = elementOptions[Math.floor(Math.random() * elementOptions.length)];
-                userSelections.elementHand[hand] = randomElement.value;
+                
+                // Enhanced hand matching logic
+                if (hand === 'right' && userSelections.elementHand.left) {
+                    // Get image quality scores
+                    const leftQuality = uploadedImages.leftQuality || 50;
+                    const rightQuality = uploadedImages.rightQuality || 50;
+                    
+                    console.log(`Left hand quality: ${leftQuality}, Right hand quality: ${rightQuality}`);
+                    
+                    // Enhanced matching criteria
+                    const qualityDifference = Math.abs(leftQuality - rightQuality);
+                    const significantQualityDifference = qualityDifference > 25; // Increased threshold
+                    
+                    if (significantQualityDifference) {
+                        // Use the better quality image as reference
+                        if (rightQuality > leftQuality) {
+                            console.log('Right hand has significantly better quality, using as reference');
+                            // Generate new element for right hand and apply to both
+                            const elementOptions = palmData.elementHandDefinitions[0].options;
+                            const selectedElement = elementOptions[Math.floor(Math.random() * elementOptions.length)];
+                            userSelections.elementHand.left = selectedElement.value;
+                            userSelections.elementHand.right = selectedElement.value;
+                            
+                            // Also regenerate left hand palm lines to match right hand quality
+                            simulatePalmLineAnalysis('left');
+                        } else {
+                            console.log('Left hand has significantly better quality, using as reference');
+                            // Use left hand's element for right hand
+                            userSelections.elementHand.right = userSelections.elementHand.left;
+                        }
+                    } else {
+                        // Similar quality - ensure consistency by using left hand as baseline
+                        console.log('Similar quality images, maintaining consistency with left hand');
+                        
+                        // Force consistency: same element for both hands
+                        userSelections.elementHand.right = userSelections.elementHand.left;
+                        
+                        // Optional: adjust some palm line characteristics to be similar but not identical
+                        if (userSelections.palmLines.left && userSelections.palmLines.right) {
+                            // Ensure major lines have similar characteristics
+                            const leftLines = userSelections.palmLines.left;
+                            const rightLines = userSelections.palmLines.right;
+                            
+                            // Make life line depth similar
+                            if (leftLines.lifeLine && rightLines.lifeLine) {
+                                const leftDepth = leftLines.lifeLine.depth;
+                                // Make right hand depth similar but potentially slightly different
+                                const depthOptions = ['very_deep', 'deep', 'moderate', 'shallow'];
+                                const leftIndex = depthOptions.indexOf(leftDepth);
+                                const similarDepthIndex = Math.max(0, Math.min(depthOptions.length - 1, 
+                                    leftIndex + (Math.random() > 0.5 ? 1 : -1) * (Math.random() > 0.7 ? 1 : 0)));
+                                rightLines.lifeLine.depth = depthOptions[similarDepthIndex];
+                            }
+                            
+                            // Make heart line curve similar
+                            if (leftLines.heartLine && rightLines.heartLine) {
+                                const leftCurve = leftLines.heartLine.curve;
+                                const curveOptions = ['high_curve', 'moderate_curve', 'slight_curve', 'straight'];
+                                const leftIndex = curveOptions.indexOf(leftCurve);
+                                const similarCurveIndex = Math.max(0, Math.min(curveOptions.length - 1,
+                                    leftIndex + (Math.random() > 0.5 ? 1 : -1) * (Math.random() > 0.8 ? 1 : 0)));
+                                rightLines.heartLine.curve = curveOptions[similarCurveIndex];
+                            }
+                            
+                            // Make head line length similar
+                            if (leftLines.headLine && rightLines.headLine) {
+                                const leftLength = leftLines.headLine.length;
+                                const lengthOptions = ['very_long', 'long', 'moderate', 'short'];
+                                const leftIndex = lengthOptions.indexOf(leftLength);
+                                const similarLengthIndex = Math.max(0, Math.min(lengthOptions.length - 1,
+                                    leftIndex + (Math.random() > 0.5 ? 1 : -1) * (Math.random() > 0.8 ? 1 : 0)));
+                                rightLines.headLine.length = lengthOptions[similarLengthIndex];
+                            }
+                        }
+                    }
+                } else {
+                    // First hand analysis or left hand analysis
+                    const elementOptions = palmData.elementHandDefinitions[0].options;
+                    const randomElement = elementOptions[Math.floor(Math.random() * elementOptions.length)];
+                    userSelections.elementHand[hand] = randomElement.value;
+                    
+                    console.log(`Selected ${randomElement.value} element for ${hand} hand`);
+                }
             }
 
             // Event Listeners
@@ -1039,6 +1161,10 @@
                                 
                                 // Validate hand detection
                                 const isValidHand = await validateHandImage(tempImg);
+                                
+                                // Assess and store image quality
+                                const imageQuality = assessImageQuality(tempImg);
+                                uploadedImages[`${hand}Quality`] = imageQuality.score;
                                 
                                 // Remove loading message
                                 if (loadingDiv.parentNode) {
@@ -1188,26 +1314,16 @@
                     let readingHtml = '';
                     
                     // Add left hand readings
-                    readingHtml += '<h4 class="text-lg font-semibold mb-2">Left Hand - Inherited Traits</h4>';
+                    readingHtml += '<h4 class="text-lg font-semibold mb-2">Left Hand - Inherited Traits & Potential</h4>';
                     readingHtml += '<p class="mb-4">' + palmData.handMeanings.left + '</p>';
                     
-                    palmData.palmLineDefinitions.forEach(line => {
-                        const leftValue = userSelections.palmLines.left[line.id];
-                        if (leftValue && palmData.palmLineReadings[line.id][leftValue]) {
-                            readingHtml += `<p><strong>${line.name}:</strong> ${palmData.palmLineReadings[line.id][leftValue]}</p>`;
-                        }
-                    });
+                    readingHtml += generateDetailedLineReading('left', userSelections.palmLines.left);
                     
                     // Add right hand readings
-                    readingHtml += '<h4 class="text-lg font-semibold mt-6 mb-2">Right Hand - Current Path</h4>';
+                    readingHtml += '<h4 class="text-lg font-semibold mt-6 mb-2">Right Hand - Current Path & Achievements</h4>';
                     readingHtml += '<p class="mb-4">' + palmData.handMeanings.right + '</p>';
                     
-                    palmData.palmLineDefinitions.forEach(line => {
-                        const rightValue = userSelections.palmLines.right[line.id];
-                        if (rightValue && palmData.palmLineReadings[line.id][rightValue]) {
-                            readingHtml += `<p><strong>${line.name}:</strong> ${palmData.palmLineReadings[line.id][rightValue]}</p>`;
-                        }
-                    });
+                    readingHtml += generateDetailedLineReading('right', userSelections.palmLines.right);
                     
                     if (palmLineReadingResult) {
                         palmLineReadingResult.innerHTML = readingHtml;
@@ -1304,6 +1420,727 @@
                     });
                 }
             });
+
+            // Function to generate detailed line readings
+            function generateDetailedLineReading(hand, lineData) {
+                let html = '';
+                
+                // Life Line Analysis
+                if (lineData.lifeLine) {
+                    html += '<div class="mb-6 p-4 bg-gradient-to-r from-red-50 to-pink-50 rounded-lg border-l-4 border-red-400">';
+                    html += '<h5 class="text-lg font-semibold text-red-700 mb-2">🌟 Life Line Analysis</h5>';
+                    html += '<p class="text-sm text-gray-600 mb-3">Your life force, vitality, and major life changes</p>';
+                    
+                    const life = lineData.lifeLine;
+                    html += `<p class="mb-2"><strong>Depth & Clarity:</strong> ${getLifeLineDepthReading(life.depth, life.clarity, hand)}</p>`;
+                    html += `<p class="mb-2"><strong>Length & Curve:</strong> ${getLifeLineLengthReading(life.length, life.curve, hand)}</p>`;
+                    html += `<p class="mb-2"><strong>Breaks & Islands:</strong> ${getLifeLineBreaksReading(life.breaks, life.islands, hand)}</p>`;
+                    html += `<p><strong>Branches:</strong> ${getLifeLineBranchesReading(life.branches, hand)}</p>`;
+                    html += '</div>';
+                }
+                
+                // Head Line Analysis
+                if (lineData.headLine) {
+                    html += '<div class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-400">';
+                    html += '<h5 class="text-lg font-semibold text-blue-700 mb-2">🧠 Head Line Analysis</h5>';
+                    html += '<p class="text-sm text-gray-600 mb-3">Your intellectual capacity, thinking style, and mental approach</p>';
+                    
+                    const head = lineData.headLine;
+                    html += `<p class="mb-2"><strong>Length & Direction:</strong> ${getHeadLineLengthReading(head.length, head.direction, hand)}</p>`;
+                    html += `<p class="mb-2"><strong>Depth & Separation:</strong> ${getHeadLineDepthReading(head.depth, head.separation, hand)}</p>`;
+                    html += `<p class="mb-2"><strong>Ending & Formation:</strong> ${getHeadLineEndingReading(head.ending, head.chains, hand)}</p>`;
+                    html += `<p><strong>Islands & Patterns:</strong> ${getHeadLineIslandsReading(head.islands, hand)}</p>`;
+                    html += '</div>';
+                }
+                
+                // Heart Line Analysis
+                if (lineData.heartLine) {
+                    html += '<div class="mb-6 p-4 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg border-l-4 border-pink-400">';
+                    html += '<h5 class="text-lg font-semibold text-pink-700 mb-2">💖 Heart Line Analysis</h5>';
+                    html += '<p class="text-sm text-gray-600 mb-3">Your emotional nature, relationships, and love life</p>';
+                    
+                    const heart = lineData.heartLine;
+                    html += `<p class="mb-2"><strong>Curve & Length:</strong> ${getHeartLineCurveReading(heart.curve, heart.length, hand)}</p>`;
+                    html += `<p class="mb-2"><strong>Depth & Ending:</strong> ${getHeartLineDepthReading(heart.depth, heart.ending, hand)}</p>`;
+                    html += `<p class="mb-2"><strong>Branches & Chains:</strong> ${getHeartLineBranchesReading(heart.branches, heart.chains, hand)}</p>`;
+                    html += `<p><strong>Islands & Patterns:</strong> ${getHeartLineIslandsReading(heart.islands, hand)}</p>`;
+                    html += '</div>';
+                }
+                
+                // Fate Line Analysis
+                if (lineData.fateLine) {
+                    html += '<div class="mb-6 p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg border-l-4 border-purple-400">';
+                    html += '<h5 class="text-lg font-semibold text-purple-700 mb-2">⭐ Fate Line Analysis</h5>';
+                    html += '<p class="text-sm text-gray-600 mb-3">Your career path, life direction, and destiny</p>';
+                    
+                    const fate = lineData.fateLine;
+                    html += `<p class="mb-2"><strong>Presence & Origin:</strong> ${getFateLinePresenceReading(fate.presence, fate.origin, hand)}</p>`;
+                    html += `<p class="mb-2"><strong>Direction & Breaks:</strong> ${getFateLineDirectionReading(fate.direction, fate.breaks, hand)}</p>`;
+                    html += `<p><strong>Branches & Islands:</strong> ${getFateLineBranchesReading(fate.branches, fate.islands, hand)}</p>`;
+                    html += '</div>';
+                }
+                
+                // Sun Line Analysis
+                if (lineData.sunLine) {
+                    html += '<div class="mb-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border-l-4 border-yellow-400">';
+                    html += '<h5 class="text-lg font-semibold text-yellow-700 mb-2">☀️ Sun Line Analysis</h5>';
+                    html += '<p class="text-sm text-gray-600 mb-3">Your success, fame, and creative expression</p>';
+                    
+                    const sun = lineData.sunLine;
+                    html += `<p class="mb-2"><strong>Presence & Origin:</strong> ${getSunLinePresenceReading(sun.presence, sun.origin, hand)}</p>`;
+                    html += `<p><strong>Clarity & Branches:</strong> ${getSunLineClarityReading(sun.clarity, sun.branches, hand)}</p>`;
+                    html += '</div>';
+                }
+                
+                // Marriage Lines Analysis
+                if (lineData.marriageLines) {
+                    html += '<div class="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-l-4 border-green-400">';
+                    html += '<h5 class="text-lg font-semibold text-green-700 mb-2">💍 Marriage Lines Analysis</h5>';
+                    html += '<p class="text-sm text-gray-600 mb-3">Your relationships, partnerships, and emotional bonds</p>';
+                    
+                    const marriage = lineData.marriageLines;
+                    html += `<p class="mb-2"><strong>Number & Depth:</strong> ${getMarriageLinesReading(marriage.number, marriage.depth, hand)}</p>`;
+                    html += `<p><strong>Length & Direction:</strong> ${getMarriageDirectionReading(marriage.length, marriage.direction, hand)}</p>`;
+                    html += '</div>';
+                }
+                
+                // Travel Lines Analysis
+                if (lineData.travelLines) {
+                    html += '<div class="mb-4 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg border-l-4 border-teal-400">';
+                    html += '<h5 class="text-lg font-semibold text-teal-700 mb-2">✈️ Travel Lines Analysis</h5>';
+                    html += '<p class="text-sm text-gray-600 mb-3">Your journeys, adventures, and life changes</p>';
+                    
+                    const travel = lineData.travelLines;
+                    html += `<p><strong>Travel Patterns:</strong> ${getTravelLinesReading(travel.number, travel.clarity, hand)}</p>`;
+                    if (travel.direction && travel.connection) {
+                        html += `<p class="mt-2"><strong>Travel Style:</strong> ${getTravelDirectionReading(travel.direction, travel.connection, hand)}</p>`;
+                    }
+                    html += '</div>';
+                }
+
+                // Health Line Analysis (if present)
+                if (lineData.healthLine && lineData.healthLine.presence !== 'absent') {
+                    html += '<div class="mb-4 p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border-l-4 border-emerald-400">';
+                    html += '<h5 class="text-lg font-semibold text-emerald-700 mb-2">🌿 Health Line Analysis</h5>';
+                    html += '<p class="text-sm text-gray-600 mb-3">Your wellness patterns and health awareness</p>';
+                    
+                    const health = lineData.healthLine;
+                    html += `<p><strong>Health Indicators:</strong> ${getHealthLineReading(health.presence, health.clarity, hand)}</p>`;
+                    if (health.position) {
+                        html += `<p class="mt-2"><strong>Health Focus:</strong> ${getHealthPositionReading(health.position, hand)}</p>`;
+                    }
+                    html += '</div>';
+                }
+
+                // Intuition Line Analysis (if present)
+                if (lineData.intuitionLine && lineData.intuitionLine.presence !== 'absent') {
+                    html += '<div class="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-l-4 border-indigo-400">';
+                    html += '<h5 class="text-lg font-semibold text-indigo-700 mb-2">🔮 Intuition Line Analysis</h5>';
+                    html += '<p class="text-sm text-gray-600 mb-3">Your psychic abilities and inner wisdom</p>';
+                    
+                    const intuition = lineData.intuitionLine;
+                    html += `<p><strong>Intuitive Capacity:</strong> ${getIntuitionLineReading(intuition.presence, intuition.curve, hand)}</p>`;
+                    html += '</div>';
+                }
+
+                // Money Lines Analysis (if present)
+                if (lineData.moneyLines && lineData.moneyLines.number !== 'none') {
+                    html += '<div class="mb-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg border-l-4 border-amber-400">';
+                    html += '<h5 class="text-lg font-semibold text-amber-700 mb-2">💰 Wealth Lines Analysis</h5>';
+                    html += '<p class="text-sm text-gray-600 mb-3">Your financial potential and wealth accumulation patterns</p>';
+                    
+                    const money = lineData.moneyLines;
+                    html += `<p><strong>Financial Indicators:</strong> ${getMoneyLinesReading(money.number, money.clarity, hand)}</p>`;
+                    html += '</div>';
+                }
+                
+                return html;
+            }
+
+            // Detailed reading functions for Life Line
+            function getLifeLineDepthReading(depth, clarity, hand) {
+                const handContext = hand === 'left' ? 'inherited vitality' : 'developed stamina';
+                
+                let reading = '';
+                if (depth === 'very_deep' && clarity === 'very_clear') {
+                    reading = `Your ${handContext} is exceptionally strong. This indicates profound physical resilience and an unshakeable life force. `;
+                } else if (depth === 'deep') {
+                    reading = `Your ${handContext} is robust and well-established. You possess reliable energy reserves and good health potential. `;
+                } else if (depth === 'moderate') {
+                    reading = `Your ${handContext} is balanced and steady. You maintain consistent energy levels with natural rhythms. `;
+                } else {
+                    reading = `Your ${handContext} tends toward sensitivity. You may need to be mindful of energy conservation and self-care. `;
+                }
+                
+                if (clarity === 'very_clear') {
+                    reading += 'The clarity suggests unwavering life direction and strong physical constitution.';
+                } else if (clarity === 'clear') {
+                    reading += 'The clear formation indicates good health awareness and steady life progress.';
+                } else if (clarity === 'somewhat_clear') {
+                    reading += 'Some variations suggest periods of adjustment and adaptation in your life journey.';
+                } else {
+                    reading += 'The unclear formation suggests you may experience fluctuating energy and need extra attention to wellness.';
+                }
+                
+                return reading;
+            }
+            
+            function getLifeLineLengthReading(length, curve, hand) {
+                const handContext = hand === 'left' ? 'natural longevity potential' : 'current life approach';
+                
+                let reading = '';
+                if (length === 'very_long') {
+                    reading = `Your ${handContext} indicates exceptional endurance and a long, fulfilling life journey. `;
+                } else if (length === 'long') {
+                    reading = `Your ${handContext} suggests good longevity and sustained vitality throughout life. `;
+                } else if (length === 'moderate') {
+                    reading = `Your ${handContext} shows balanced life energy with focus on quality over quantity. `;
+                } else {
+                    reading = `Your ${handContext} emphasizes intensity and purposeful living in each moment. `;
+                }
+                
+                if (curve === 'wide_curve') {
+                    reading += 'The wide curve indicates an adventurous spirit and desire to experience life fully.';
+                } else if (curve === 'moderate_curve') {
+                    reading += 'The moderate curve suggests balanced exploration and practical wisdom.';
+                } else if (curve === 'slight_curve') {
+                    reading += 'The gentle curve indicates careful life choices and conservative energy management.';
+                } else {
+                    reading += 'The straight line suggests efficiency, directness, and practical approach to life.';
+                }
+                
+                return reading;
+            }
+            
+            function getLifeLineBreaksReading(breaks, islands, hand) {
+                const handContext = hand === 'left' ? 'inherited resilience patterns' : 'life transformation abilities';
+                
+                let reading = '';
+                if (breaks === 'none' && islands === 'none') {
+                    reading = `Your ${handContext} show unbroken strength and continuous life flow. This indicates remarkable stability and resistance to major disruptions.`;
+                } else if (breaks === 'minor') {
+                    reading = `Minor breaks in your ${handContext} suggest small but significant life transitions. These represent growth periods and positive changes.`;
+                } else if (breaks === 'moderate') {
+                    reading = `Moderate breaks indicate important life transformations that have shaped or will shape your journey. These mark periods of renewal and redirection.`;
+                } else if (breaks === 'major') {
+                    reading = `Major breaks represent profound life changes and rebirth experiences. Your ${handContext} show incredible ability to overcome and transform.`;
+                }
+                
+                if (islands === 'few') {
+                    reading += ' Small islands indicate brief periods of uncertainty that lead to greater wisdom.';
+                } else if (islands === 'several') {
+                    reading += ' Multiple islands suggest complex life experiences that build character and depth.';
+                } else if (islands === 'many') {
+                    reading += ' Numerous islands indicate a rich, multi-layered life with many learning opportunities.';
+                }
+                
+                return reading;
+            }
+            
+            function getLifeLineBranchesReading(branches, hand) {
+                const handContext = hand === 'left' ? 'inherited potential paths' : 'achieved life directions';
+                
+                if (branches === 'none') {
+                    return `Your ${handContext} show focused, single-minded determination and clear life direction.`;
+                } else if (branches === 'upward') {
+                    return `Upward branches in your ${handContext} indicate ambition, success, and positive life developments. These suggest achievement and recognition.`;
+                } else if (branches === 'downward') {
+                    return `Downward branches suggest grounding influences and practical considerations in your ${handContext}. This indicates wisdom gained through experience.`;
+                } else {
+                    return `Multiple branches in your ${handContext} show diverse interests, varied achievements, and a rich, multi-faceted life journey.`;
+                }
+            }
+
+            // Detailed reading functions for Head Line
+            function getHeadLineLengthReading(length, direction, hand) {
+                const handContext = hand === 'left' ? 'inherited intellectual capacity' : 'developed thinking abilities';
+                
+                let reading = '';
+                if (length === 'very_long') {
+                    reading = `Your ${handContext} indicate exceptional analytical powers and comprehensive thinking. You naturally see the big picture and details simultaneously. `;
+                } else if (length === 'long') {
+                    reading = `Your ${handContext} show strong intellectual depth and systematic thinking. You excel at complex problem-solving and strategic planning. `;
+                } else if (length === 'moderate') {
+                    reading = `Your ${handContext} demonstrate balanced intellectual approach, combining practicality with insight. You think efficiently and effectively. `;
+                } else {
+                    reading = `Your ${handContext} favor quick, intuitive decisions and practical intelligence. You excel at immediate problem-solving and rapid assessment. `;
+                }
+                
+                if (direction === 'straight') {
+                    reading += 'The straight direction indicates logical, methodical thinking and preference for facts and concrete information.';
+                } else if (direction === 'slightly_curved') {
+                    reading += 'The slight curve suggests creative logical thinking with touches of imagination and intuitive insight.';
+                } else if (direction === 'curved') {
+                    reading += 'The curved direction shows strong creative intelligence, artistic thinking, and imaginative problem-solving abilities.';
+                } else {
+                    reading += 'The pronounced curve indicates highly creative, intuitive thinking with strong artistic and imaginative capabilities.';
+                }
+                
+                return reading;
+            }
+            
+            function getHeadLineDepthReading(depth, separation, hand) {
+                const handContext = hand === 'left' ? 'natural mental strength' : 'developed intellectual confidence';
+                
+                let reading = '';
+                if (depth === 'very_deep') {
+                    reading = `Your ${handContext} is exceptionally powerful. You possess intense concentration abilities and profound thinking capacity. `;
+                } else if (depth === 'deep') {
+                    reading = `Your ${handContext} shows strong mental focus and reliable intellectual abilities. You can sustain complex thinking for extended periods. `;
+                } else if (depth === 'moderate') {
+                    reading = `Your ${handContext} demonstrates balanced mental energy with good focus when needed. You think clearly and efficiently. `;
+                } else {
+                    reading = `Your ${handContext} tends toward flexibility and adaptability. You prefer varied mental stimulation and quick thinking. `;
+                }
+                
+                if (separation === 'joined') {
+                    reading += 'The connection to your life line indicates careful, security-conscious thinking and deliberate decision-making.';
+                } else if (separation === 'slightly_separated') {
+                    reading += 'The slight separation suggests balanced independence with some caution in decision-making.';
+                } else if (separation === 'separated') {
+                    reading += 'The clear separation indicates independent thinking, confidence in decisions, and natural leadership abilities.';
+                } else {
+                    reading += 'The wide separation shows exceptional independence, originality, and courageous thinking with innovative approaches.';
+                }
+                
+                return reading;
+            }
+            
+            function getHeadLineEndingReading(ending, chains, hand) {
+                const handContext = hand === 'left' ? 'inherited thought patterns' : 'developed thinking style';
+                
+                let reading = '';
+                if (ending === 'straight') {
+                    reading = `Your ${handContext} culminate in practical, logical conclusions. You prefer concrete results and realistic approaches. `;
+                } else if (ending === 'forked') {
+                    reading = `Your ${handContext} show versatile thinking with ability to see multiple perspectives. You can balance different viewpoints effectively. `;
+                } else if (ending === 'curved_down') {
+                    reading = `Your ${handContext} indicate strong creative and intuitive culmination. You often find innovative solutions through inspiration. `;
+                } else {
+                    reading = `Your ${handContext} demonstrate complex, multi-faceted thinking with various intellectual directions and diverse interests. `;
+                }
+                
+                if (chains === 'none') {
+                    reading += 'The clear formation indicates consistent mental clarity and uninterrupted thought processes.';
+                } else if (chains === 'beginning') {
+                    reading += 'Chains at the beginning suggest initial learning phases and growing mental confidence.';
+                } else if (chains === 'middle') {
+                    reading += 'Central chains indicate periods of mental reorganization and intellectual growth.';
+                } else {
+                    reading += 'Throughout chains suggest complex thinking patterns with rich mental texture and varied approaches.';
+                }
+                
+                return reading;
+            }
+            
+            function getHeadLineIslandsReading(islands, hand) {
+                const handContext = hand === 'left' ? 'inherited mental characteristics' : 'developed intellectual patterns';
+                
+                if (islands === 'none') {
+                    return `Your ${handContext} show clear, uncluttered thinking with excellent mental clarity and focus.`;
+                } else if (islands === 'few') {
+                    return `A few islands in your ${handContext} indicate occasional periods of deep contemplation and intensive mental processing.`;
+                } else {
+                    return `Multiple islands suggest rich, complex thinking with periods of intensive mental work and deep intellectual exploration.`;
+                }
+            }
+
+            // Detailed reading functions for Heart Line
+            function getHeartLineCurveReading(curve, length, hand) {
+                const handContext = hand === 'left' ? 'inherited emotional nature' : 'developed emotional approach';
+                
+                let reading = '';
+                if (curve === 'high_curve') {
+                    reading = `Your ${handContext} is deeply romantic and idealistic. You experience emotions intensely and seek meaningful, soulful connections. `;
+                } else if (curve === 'moderate_curve') {
+                    reading = `Your ${handContext} balances romance with practicality. You appreciate both emotional depth and realistic relationships. `;
+                } else if (curve === 'slight_curve') {
+                    reading = `Your ${handContext} tends toward practical emotional expression with subtle romantic undertones. You value stability in relationships. `;
+                } else {
+                    reading = `Your ${handContext} is direct and practical in emotional matters. You prefer clear communication and honest relationships. `;
+                }
+                
+                if (length === 'very_long') {
+                    reading += 'The exceptional length indicates generous emotional capacity and ability to form deep, lasting bonds with many people.';
+                } else if (length === 'long') {
+                    reading += 'The long line suggests strong emotional capacity and ability to maintain several meaningful relationships simultaneously.';
+                } else if (length === 'moderate') {
+                    reading += 'The moderate length indicates balanced emotional expression with focus on quality relationships.';
+                } else {
+                    reading += 'The shorter length suggests selective, intense emotional connections with preference for fewer, deeper relationships.';
+                }
+                
+                return reading;
+            }
+            
+            function getHeartLineDepthReading(depth, ending, hand) {
+                const handContext = hand === 'left' ? 'natural emotional intensity' : 'developed emotional wisdom';
+                
+                let reading = '';
+                if (depth === 'very_deep') {
+                    reading = `Your ${handContext} is exceptionally profound. You experience emotions with great intensity and have remarkable emotional depth. `;
+                } else if (depth === 'deep') {
+                    reading = `Your ${handContext} shows strong emotional awareness and deep feeling capacity. You form meaningful emotional connections. `;
+                } else if (depth === 'moderate') {
+                    reading = `Your ${handContext} demonstrates balanced emotional expression with good emotional intelligence and stability. `;
+                } else {
+                    reading = `Your ${handContext} tends toward gentle, adaptable emotional expression with sensitivity to others' feelings. `;
+                }
+                
+                if (ending === 'under_jupiter') {
+                    reading += 'Ending under Jupiter finger indicates high emotional ideals and desire for noble, inspiring relationships.';
+                } else if (ending === 'between_jupiter_saturn') {
+                    reading += 'Ending between fingers suggests balanced emotional expression with both idealism and practicality.';
+                } else if (ending === 'under_saturn') {
+                    reading += 'Ending under Saturn indicates serious, committed approach to relationships with emphasis on responsibility.';
+                } else {
+                    reading += 'The forked ending shows complex emotional nature with ability to express different types of love and affection.';
+                }
+                
+                return reading;
+            }
+            
+            function getHeartLineBranchesReading(branches, chains, hand) {
+                const handContext = hand === 'left' ? 'inherited emotional patterns' : 'developed relationship skills';
+                
+                let reading = '';
+                if (branches === 'none') {
+                    reading = `Your ${handContext} show focused, single-minded emotional expression and preference for exclusive, committed relationships. `;
+                } else if (branches === 'upward') {
+                    reading = `Upward branches in your ${handContext} indicate optimistic emotional outlook and ability to find joy and hope in relationships. `;
+                } else if (branches === 'downward') {
+                    reading = `Downward branches suggest deep emotional processing and ability to learn from relationship experiences. `;
+                } else {
+                    reading = `Multiple branches indicate complex emotional capacity with ability to love in various ways and maintain diverse relationships. `;
+                }
+                
+                if (chains === 'none') {
+                    reading += 'The clear formation shows consistent emotional flow and stable relationship patterns.';
+                } else if (chains === 'few') {
+                    reading += 'Light chains suggest occasional periods of emotional complexity and deepening understanding.';
+                } else {
+                    reading += 'Pronounced chains indicate rich emotional texture with complex relationship experiences and deep emotional learning.';
+                }
+                
+                return reading;
+            }
+            
+            function getHeartLineIslandsReading(islands, hand) {
+                const handContext = hand === 'left' ? 'inherited emotional characteristics' : 'developed emotional insights';
+                
+                if (islands === 'none') {
+                    return `Your ${handContext} show clear emotional expression and straightforward relationship approach.`;
+                } else if (islands === 'few') {
+                    return `A few islands indicate periods of emotional introspection and deeper understanding of relationship dynamics.`;
+                } else {
+                    return `Multiple islands suggest complex emotional experiences that have contributed to deep emotional wisdom and understanding.`;
+                }
+            }
+
+            // Detailed reading functions for Fate Line
+            function getFateLinePresenceReading(presence, origin, hand) {
+                const handContext = hand === 'left' ? 'destined path' : 'chosen direction';
+                
+                let reading = '';
+                if (presence === 'strong') {
+                    reading = `Your ${handContext} is powerfully defined and clear. You have a strong sense of purpose and direction in life. `;
+                } else if (presence === 'moderate') {
+                    reading = `Your ${handContext} shows good direction with flexibility for adjustments. You balance purpose with adaptability. `;
+                } else if (presence === 'weak') {
+                    reading = `Your ${handContext} allows for freedom and self-determination. You create your own destiny through choices. `;
+                } else {
+                    reading = `Your ${handContext} emphasizes complete freedom and self-creation. You are the architect of your own destiny. `;
+                }
+                
+                if (origin === 'wrist') {
+                    reading += 'Starting from the wrist indicates early clarity of purpose and consistent life direction from youth.';
+                } else if (origin === 'life_line') {
+                    reading += 'Originating from the life line suggests that your personal growth directly influences your career and life direction.';
+                } else if (origin === 'mount_moon') {
+                    reading += 'Starting from the Moon mount indicates that imagination, intuition, and public interaction shape your destiny.';
+                } else {
+                    reading += 'Beginning in the middle palm suggests that your life direction emerges through experience and conscious choice.';
+                }
+                
+                return reading;
+            }
+            
+            function getFateLineDirectionReading(direction, breaks, hand) {
+                const handContext = hand === 'left' ? 'natural life flow' : 'pursued life path';
+                
+                let reading = '';
+                if (direction === 'straight') {
+                    reading = `Your ${handContext} follows a direct, unwavering course. You pursue goals with determination and focus. `;
+                } else if (direction === 'curved') {
+                    reading = `Your ${handContext} shows flexibility and adaptation. You adjust your course based on opportunities and circumstances. `;
+                } else {
+                    reading = `Your ${handContext} indicates dynamic, varied approaches with multiple directions and diverse interests. `;
+                }
+                
+                if (breaks === 'none') {
+                    reading += 'The unbroken line indicates consistent progress and steady advancement throughout life.';
+                } else if (breaks === 'minor') {
+                    reading += 'Minor breaks suggest small career changes or adjustments that ultimately strengthen your path.';
+                } else if (breaks === 'major') {
+                    reading += 'Major breaks indicate significant life transformations and career redirections that lead to growth.';
+                } else {
+                    reading += 'Multiple breaks show a dynamic life with various career phases and continuous evolution.';
+                }
+                
+                return reading;
+            }
+            
+            function getFateLineBranchesReading(branches, islands, hand) {
+                const handContext = hand === 'left' ? 'potential opportunities' : 'achieved successes';
+                
+                let reading = '';
+                if (branches === 'none') {
+                    reading = `Your ${handContext} show concentrated focus and singular dedication to your main life purpose. `;
+                } else if (branches === 'few') {
+                    reading = `Limited branches indicate selective opportunities that enhance your main direction without distraction. `;
+                } else {
+                    reading = `Multiple branches show diverse ${handContext} with various paths to success and achievement. `;
+                }
+                
+                if (islands === 'none') {
+                    reading += 'The clear path indicates smooth progress with minimal obstacles in your career journey.';
+                } else if (islands === 'few') {
+                    reading += 'A few islands suggest brief challenging periods that ultimately contribute to character building and wisdom.';
+                } else {
+                    reading += 'Several islands indicate complex career experiences that provide rich learning and eventual mastery.';
+                }
+                
+                return reading;
+            }
+
+            // Detailed reading functions for Sun Line
+            function getSunLinePresenceReading(presence, origin, hand) {
+                const handContext = hand === 'left' ? 'natural charisma potential' : 'developed recognition abilities';
+                
+                let reading = '';
+                if (presence === 'strong') {
+                    reading = `Your ${handContext} is exceptionally powerful. You have natural magnetism and strong potential for public recognition and success. `;
+                } else if (presence === 'moderate') {
+                    reading = `Your ${handContext} shows good recognition abilities with potential for achievement and appreciation by others. `;
+                } else if (presence === 'weak') {
+                    reading = `Your ${handContext} operates through subtle influence and behind-the-scenes impact. You prefer meaningful contribution over public recognition. `;
+                } else {
+                    reading = `Your ${handContext} focuses on personal fulfillment rather than external recognition. You find satisfaction in private achievement. `;
+                }
+                
+                if (origin === 'heart_line') {
+                    reading += 'Starting from the heart line indicates that emotional satisfaction leads to your greatest achievements and recognition.';
+                } else if (origin === 'head_line') {
+                    reading += 'Originating from the head line suggests that intellectual pursuits and mental abilities bring you success and recognition.';
+                } else if (origin === 'life_line') {
+                    reading += 'Beginning from the life line indicates that personal growth and life experience contribute to your success.';
+                } else {
+                    reading += 'Starting from the wrist shows early potential for recognition with consistent development throughout life.';
+                }
+                
+                return reading;
+            }
+            
+            function getSunLineClarityReading(clarity, branches, hand) {
+                const handContext = hand === 'left' ? 'inherent success patterns' : 'achieved recognition patterns';
+                
+                let reading = '';
+                if (clarity === 'very_clear') {
+                    reading = `Your ${handContext} are exceptionally well-defined, indicating clear path to recognition and outstanding achievement potential. `;
+                } else if (clarity === 'clear') {
+                    reading = `Your ${handContext} show good definition with reliable path to success and appreciation. `;
+                } else {
+                    reading = `Your ${handContext} operate through subtle channels with quiet influence and understated achievement. `;
+                }
+                
+                if (branches === 'none') {
+                    reading += 'The single line indicates focused success in one primary area with concentrated recognition.';
+                } else if (branches === 'few') {
+                    reading += 'Limited branches suggest success in related areas that complement your main achievement.';
+                } else {
+                    reading += 'Multiple branches indicate diverse talents with recognition in various fields and multifaceted success.';
+                }
+                
+                return reading;
+            }
+
+            // Detailed reading functions for Marriage Lines
+            function getMarriageLinesReading(number, depth, hand) {
+                const handContext = hand === 'left' ? 'relationship potential' : 'relationship experiences';
+                
+                let reading = '';
+                if (number === 'none') {
+                    reading = `Your ${handContext} indicates a focus on self-development and independence. You may find fulfillment through non-traditional relationship paths. `;
+                } else if (number === 'one') {
+                    reading = `Your ${handContext} shows preference for one significant, deep relationship. You value commitment and exclusive partnership. `;
+                } else if (number === 'two') {
+                    reading = `Your ${handContext} indicates capacity for two important relationships, possibly sequential or representing different types of bonds. `;
+                } else {
+                    reading = `Your ${handContext} shows capacity for multiple meaningful connections with various types of relationships throughout life. `;
+                }
+                
+                if (depth === 'deep') {
+                    reading += 'The deep lines indicate profound, lasting emotional connections with significant impact on your life.';
+                } else if (depth === 'moderate') {
+                    reading += 'The moderate depth suggests meaningful relationships with good emotional connection and stability.';
+                } else {
+                    reading += 'The lighter lines indicate gentle, adaptable relationships with emotional flexibility and harmony.';
+                }
+                
+                return reading;
+            }
+            
+            function getMarriageDirectionReading(length, direction, hand) {
+                const handContext = hand === 'left' ? 'relationship style potential' : 'relationship approach development';
+                
+                let reading = '';
+                if (length === 'long') {
+                    reading = `Your ${handContext} indicates extensive, comprehensive relationships with deep emotional involvement and long duration. `;
+                } else if (length === 'moderate') {
+                    reading = `Your ${handContext} shows balanced relationship approach with good emotional investment and practical consideration. `;
+                } else {
+                    reading = `Your ${handContext} suggests focused, intense relationships with preference for quality over duration. `;
+                }
+                
+                if (direction === 'straight') {
+                    reading += 'The straight direction indicates honest, direct relationship communication and straightforward emotional expression.';
+                } else if (direction === 'curved_up') {
+                    reading += 'The upward curve suggests optimistic relationship outlook with happiness and fulfillment in partnerships.';
+                } else {
+                    reading += 'The downward curve indicates some relationship challenges that ultimately lead to wisdom and deeper understanding.';
+                }
+                
+                return reading;
+            }
+
+            // Detailed reading functions for Travel Lines
+            function getTravelLinesReading(number, clarity, hand) {
+                const handContext = hand === 'left' ? 'natural wanderlust' : 'travel experiences';
+                
+                let reading = '';
+                if (number === 'none') {
+                    reading = `Your ${handContext} indicates contentment with familiar environments and focus on local experiences and deep roots. `;
+                } else if (number === 'few') {
+                    reading = `Your ${handContext} shows selective travel with meaningful journeys that provide significant personal growth. `;
+                } else if (number === 'several') {
+                    reading = `Your ${handContext} indicates good balance of travel and stability with various enriching journey experiences. `;
+                } else {
+                    reading = `Your ${handContext} shows strong desire for diverse experiences with extensive travel and cultural exploration. `;
+                }
+                
+                if (clarity === 'clear') {
+                    reading += 'The clear lines indicate well-planned, successful journeys with significant positive impact on your life development.';
+                } else if (clarity === 'moderate') {
+                    reading += 'The moderate clarity suggests travel experiences that provide learning and growth with some challenges to overcome.';
+                } else {
+                    reading += 'The lighter lines indicate spontaneous travel opportunities and flexible approach to journey experiences.';
+                }
+                
+                return reading;
+            }
+
+            function getTravelDirectionReading(direction, connection, hand) {
+                const handContext = hand === 'left' ? 'inherited travel nature' : 'developed travel style';
+                
+                let reading = '';
+                if (direction === 'horizontal') {
+                    reading = `Your ${handContext} favors traditional travel paths and well-established routes. `;
+                } else if (direction === 'diagonal') {
+                    reading = `Your ${handContext} shows preference for adventurous, off-the-beaten-path journeys. `;
+                } else {
+                    reading = `Your ${handContext} indicates varied travel styles, from conventional to highly adventurous. `;
+                }
+                
+                if (connection === 'life_line') {
+                    reading += 'Connected to life line suggests travel deeply impacts personal growth and life changes.';
+                } else if (connection === 'fate_line') {
+                    reading += 'Connected to fate line indicates travel influences career and major life direction.';
+                } else {
+                    reading += 'Independent lines suggest travel for pure enjoyment and personal enrichment.';
+                }
+                
+                return reading;
+            }
+
+            // Health Line reading functions
+            function getHealthLineReading(presence, clarity, hand) {
+                const handContext = hand === 'left' ? 'inherited health awareness' : 'developed wellness approach';
+                
+                let reading = '';
+                if (presence === 'strong') {
+                    reading = `Your ${handContext} is exceptionally well-developed. You have natural awareness of health matters and strong connection to your body's needs. `;
+                } else if (presence === 'moderate') {
+                    reading = `Your ${handContext} shows good health consciousness with balanced attention to wellness. `;
+                } else {
+                    reading = `Your ${handContext} operates through subtle body awareness and intuitive health understanding. `;
+                }
+                
+                if (clarity === 'clear') {
+                    reading += 'The clear formation indicates excellent health awareness and ability to maintain wellness through conscious choices.';
+                } else if (clarity === 'broken') {
+                    reading += 'The broken pattern suggests periods of health challenges that lead to greater awareness and stronger constitution.';
+                } else {
+                    reading += 'The wavy formation indicates sensitivity to environmental factors and need for gentle health approaches.';
+                }
+                
+                return reading;
+            }
+
+            function getHealthPositionReading(position, hand) {
+                const handContext = hand === 'left' ? 'natural health focus' : 'developed health priorities';
+                
+                if (position === 'close_life_line') {
+                    return `Your ${handContext} is closely connected to vitality and life force, indicating strong overall constitutional health.`;
+                } else if (position === 'middle_palm') {
+                    return `Your ${handContext} balances physical and mental health, with attention to both body and mind wellness.`;
+                } else {
+                    return `Your ${handContext} emphasizes environmental and social factors in health, including community and relationships.`;
+                }
+            }
+
+            // Intuition Line reading functions
+            function getIntuitionLineReading(presence, curve, hand) {
+                const handContext = hand === 'left' ? 'inherited psychic ability' : 'developed intuitive skills';
+                
+                let reading = '';
+                if (presence === 'strong') {
+                    reading = `Your ${handContext} is remarkably powerful. You possess natural psychic sensitivity and strong connection to inner wisdom. `;
+                } else if (presence === 'moderate') {
+                    reading = `Your ${handContext} shows good intuitive capacity with reliable inner guidance and spiritual awareness. `;
+                } else {
+                    reading = `Your ${handContext} operates through subtle impressions and gentle inner knowing. `;
+                }
+                
+                if (curve === 'pronounced') {
+                    reading += 'The pronounced curve indicates exceptional sensitivity to subtle energies and strong mediumistic abilities.';
+                } else if (curve === 'moderate') {
+                    reading += 'The moderate curve suggests balanced intuition with practical application of psychic insights.';
+                } else {
+                    reading += 'The gentle curve indicates quiet intuitive wisdom that guides through subtle impressions and feelings.';
+                }
+                
+                return reading;
+            }
+
+            // Money Lines reading functions
+            function getMoneyLinesReading(number, clarity, hand) {
+                const handContext = hand === 'left' ? 'inherited wealth potential' : 'developed financial abilities';
+                
+                let reading = '';
+                if (number === 'several') {
+                    reading = `Your ${handContext} indicates multiple streams of income and diverse financial opportunities. You have natural ability to create wealth through various channels. `;
+                } else if (number === 'few') {
+                    reading = `Your ${handContext} shows focused financial success with select, profitable ventures. You prefer quality over quantity in wealth building. `;
+                }
+                
+                if (clarity === 'clear') {
+                    reading += 'The clear lines indicate strong financial acumen and ability to recognize and capitalize on money-making opportunities.';
+                } else {
+                    reading += 'The fainter lines suggest wealth that comes through patience, persistence, and gradual accumulation rather than sudden windfalls.';
+                }
+                
+                return reading;
+            }
         });
     </script>
 </body>
