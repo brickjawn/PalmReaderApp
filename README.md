@@ -5,11 +5,9 @@ A modern, interactive palm reading web application that combines palmistry with 
 ## 📸 Screenshots
 
 ### Upload Interface
-![Palm Upload Interface](https://user-images.githubusercontent.com/placeholder/palm-upload-interface.png)
 *Beautiful trippy animated background with intuitive dual-hand upload system*
 
-### Main Features Preview
-![Mystic Palm & Elements Preview](preview.png)
+### Main Features Preview  
 *Complete palm reading experience with tabbed navigation*
 
 ## ✨ Features
