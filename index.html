@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mystic Palm & Elements</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --primary: #7C3AED;
+            --primary-light: #8B5CF6;
+            --primary-dark: #6D28D9;
+            --secondary: #475569;
+            --accent: #F59E0B;
+            --background: #F8FAFC;
+            --card: #FFFFFF;
+            --text-primary: #1E293B;
+            --text-secondary: #64748B;
+            --border: #E2E8F0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .font-display {
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 2rem 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background-color: var(--card);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        .button {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 500;
+            padding: 0.875rem 1.75rem;
+            border-radius: 0.75rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-block;
+            width: 100%;
+            margin-top: 1rem;
+            font-size: 1rem;
+            letter-spacing: 0.025em;
+        }
+
+        .button:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button-secondary {
+            background-color: var(--secondary);
+            color: white;
+        }
+
+        .button-secondary:hover {
+            background-color: #334155;
+        }
+
+        .tab-button {
+            background-color: transparent;
+            color: var(--text-secondary);
+            font-weight: 500;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin: 0 0.375rem;
+            font-size: 0.9375rem;
+        }
+
+        .tab-button.active {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .tab-button:hover:not(.active) {
+            background-color: var(--background);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        label {
+            display: block;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            text-align: left;
+            font-size: 0.9375rem;
+        }
+
+        input[type="file"] {
+            border: 2px dashed var(--border);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            cursor: pointer;
+            display: block;
+            width: 100%;
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            transition: all 0.2s ease;
+        }
+
+        input[type="file"]:hover {
+            border-color: var(--primary);
+            background-color: rgba(124, 58, 237, 0.05);
+        }
+
+        input[type="file"]::file-selector-button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            margin-right: 0.75rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background-color: var(--primary-dark);
+        }
+
+        #palmImagePreview, #analyzingPalmImageDisplay, #readingPalmImage {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 1rem;
+            margin: 1.5rem auto;
+            display: block;
+            border: 1px solid var(--border);
+            object-fit: contain;
+        }
+
+        .reading-text {
+            text-align: left;
+            color: var(--text-primary);
+        }
+
+        .reading-text p {
+            margin-bottom: 1rem;
+            line-height: 1.75;
+            color: var(--text-secondary);
+        }
+
+        .reading-text strong, .reading-text h4 {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        select {
+            width: 100%;
+            padding: 0.875rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+            background-color: white;
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1.5em;
+            padding-right: 2.5rem;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        .scan-container {
+            position: relative;
+            display: inline-block;
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+
+        .scan-line {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            box-shadow: 0 0 15px var(--primary);
+            animation: scan-anim 3s ease-in-out infinite;
+            border-radius: 2px;
+        }
+
+        @keyframes scan-anim {
+            0% { top: 0%; opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { top: 100%; opacity: 0.5; }
+        }
+
+        .loader {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            animation: spin 1s linear infinite;
+            margin: 1.5rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--background);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div id="welcomeScreen" class="card">
+            <h1 class="text-3xl font-display font-bold text-gray-800 mb-4">Mystic Palm & Elements</h1>
+            <p class="text-gray-600 mb-6">Unveil the secrets held within your hand and the cosmos. Upload a picture of your palm to begin your journey.</p>
+            <button id="startScanButton" class="button">Begin Your Reading</button>
+        </div>
+
+        <div id="uploadScreen" class="card hidden">
+            <h2 class="text-2xl font-display font-semibold text-gray-700 mb-4">Upload Your Palm Image</h2>
+            <p class="text-gray-600 mb-4">A clear image of your dominant hand's palm sets the stage. This image will be displayed with your readings.</p>
+            <input type="file" id="palmImageInput" accept="image/*">
+            <img id="palmImagePreview" src="#" alt="Palm Preview" class="hidden"/>
+            <button id="startAnalysisButton" class="button" disabled>Analyze My Palm</button>
+            <button id="backToWelcomeButton" class="button button-secondary">Back</button>
+        </div>
+        
+        <div id="analyzingScreen" class="card hidden">
+            <h2 class="text-2xl font-display font-semibold text-gray-700 mb-4">Analyzing Your Palm...</h2>
+            <p class="text-gray-600 mb-4">Glimpsing into the patterns of your unique hand. Please wait a moment.</p>
+            <div class="scan-container mx-auto mb-4" style="max-width: 200px; max-height:200px;">
+                <img id="analyzingPalmImageDisplay" src="#" alt="Analyzing Palm"/>
+                <div class="scan-line"></div>
+            </div>
+            <div class="loader"></div>
+        </div>
+
+
+        <div id="mainContentScreen" class="card hidden">
+            <div class="flex flex-wrap justify-center mb-6 border-b pb-3">
+                <button id="tabPalmLines" class="tab-button active">Palm Lines</button>
+                <button id="tabElement" class="tab-button">Your Element</button>
+                <button id="tabAstro" class="tab-button">Astro-Link</button>
+            </div>
+            <img id="readingPalmImage" src="#" alt="Your Palm" class="hidden mb-4"/>
+
+            <div id="palmLinesContent">
+                <h3 class="text-xl font-display font-semibold text-gray-700 mb-1">Insights from Your Palm Lines</h3>
+                <p class="text-sm text-gray-500 mb-4">Our mystical scan has revealed characteristics of your major lines.</p>
+                <button id="revealPalmLineInsightsButton" class="button">Reveal Palm Line Insights</button>
+                <div id="palmLineReadingResult" class="reading-text mt-4 hidden"></div>
+            </div>
+
+            <div id="elementTypeContent" class="hidden">
+                <h3 class="text-xl font-display font-semibold text-gray-700 mb-2">Your Revealed Elemental Hand</h3>
+                <p class="text-sm text-gray-500 mb-4">The energies of your hand shape have been identified by our scan.</p>
+                <button id="revealElementalHandInsightsButton" class="button">Reveal Elemental Hand Insights</button>
+                <div id="elementReadingResult" class="reading-text mt-4 hidden"></div>
+            </div>
+
+            <div id="astroPalmistryContent" class="hidden">
+                <h3 class="text-xl font-display font-semibold text-gray-700 mb-2">Astrology & Palmistry Connection</h3>
+                <p class="text-sm text-gray-500 mb-4">Explore how your identified elemental hand type may intertwine with your astrological sign.</p>
+                <div class="mb-4">
+                    <label for="astrologicalSignSelect">Select Your Astrological Sign:</label>
+                    <select id="astrologicalSignSelect">
+                        <option value="">-- Select Sign --</option>
+                        <option value="aries">Aries (Fire)</option>
+                        <option value="taurus">Taurus (Earth)</option>
+                        <option value="gemini">Gemini (Air)</option>
+                        <option value="cancer">Cancer (Water)</option>
+                        <option value="leo">Leo (Fire)</option>
+                        <option value="virgo">Virgo (Earth)</option>
+                        <option value="libra">Libra (Air)</option>
+                        <option value="scorpio">Scorpio (Water)</option>
+                        <option value="sagittarius">Sagittarius (Fire)</option>
+                        <option value="capricorn">Capricorn (Earth)</option>
+                        <option value="aquarius">Aquarius (Air)</option>
+                        <option value="pisces">Pisces (Water)</option>
+                    </select>
+                </div>
+                <button id="getAstroReadingButton" class="button">Get Astro-Palmistry Insights</button>
+                <div id="astroReadingResult" class="reading-text mt-4 hidden"></div>
+            </div>
+             <button id="scanAgainButton" class="button button-secondary mt-6">Start New Reading</button>
+        </div>
+
+    </div>
+
+    <footer class="w-full max-w-2xl mx-auto px-4 py-8 text-center">
+        <div class="mb-4">
+            <a href="https://twitter.com/crocboot" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-primary hover:text-primary-dark transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
+                </svg>
+                <span class="font-medium">Follow @crocboot</span>
+            </a>
+        </div>
+        <p class="text-sm text-gray-500 max-w-prose mx-auto leading-relaxed">
+            Palmistry is widely considered a form of cultural, historical, and entertainment-based interpretation rather than a scientifically validated predictive method. The readings provided by PalmReading – Palm Reading are meant for personal reflection and enjoyment, not as professional guidance, medical advice, or factual predictions.
+        </p>
+    </footer>
+
+    <script>
+        // DOM Elements
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const uploadScreen = document.getElementById('uploadScreen');
+        const analyzingScreen = document.getElementById('analyzingScreen');
+        const mainContentScreen = document.getElementById('mainContentScreen');
+
+        const startScanButton = document.getElementById('startScanButton');
+        const backToWelcomeButton = document.getElementById('backToWelcomeButton');
+        const palmImageInput = document.getElementById('palmImageInput');
+        const palmImagePreview = document.getElementById('palmImagePreview');
+        const startAnalysisButton = document.getElementById('startAnalysisButton'); 
+        
+        const analyzingPalmImageDisplay = document.getElementById('analyzingPalmImageDisplay');
+        const readingPalmImage = document.getElementById('readingPalmImage');
+
+        const tabPalmLines = document.getElementById('tabPalmLines');
+        const tabElement = document.getElementById('tabElement');
+        const tabAstro = document.getElementById('tabAstro');
+
+        const palmLinesContent = document.getElementById('palmLinesContent');
+        const elementTypeContent = document.getElementById('elementTypeContent');
+        const astroPalmistryContent = document.getElementById('astroPalmistryContent');
+
+        const revealPalmLineInsightsButton = document.getElementById('revealPalmLineInsightsButton'); 
+        const palmLineReadingResult = document.getElementById('palmLineReadingResult');
+
+        // MODIFIED: Removed elementHandQuestionContainer
+        const revealElementalHandInsightsButton = document.getElementById('revealElementalHandInsightsButton'); // Renamed
+        const elementReadingResult = document.getElementById('elementReadingResult');
+
+        const astrologicalSignSelect = document.getElementById('astrologicalSignSelect');
+        const getAstroReadingButton = document.getElementById('getAstroReadingButton');
+        const astroReadingResult = document.getElementById('astroReadingResult');
+        
+        const scanAgainButton = document.getElementById('scanAgainButton');
+
+        // App State
+        const userSelections = {
+            palmLines: {}, 
+            elementHand: null, // This will be populated by simulated analysis
+            astrologicalSign: null
+        };
+        let uploadedImageURL = null;
+        
+        // Data
+        const palmData = {
+            palmLineDefinitions: [ 
+                {
+                    id: 'lifeLine',
+                    name: "Life Line", 
+                    options: [ { value: 'longClear' }, { value: 'shortBroken' } ] // Simplified for simulation
+                },
+                {
+                    id: 'headLine',
+                    name: "Head Line",
+                    options: [ { value: 'longStraight' }, { value: 'slopingForked' } ]
+                },
+                {
+                    id: 'heartLine',
+                    name: "Heart Line",
+                    options: [ { value: 'longCurvedUp' }, { value: 'shortStraightBroken' } ]
+                },
+                {
+                    id: 'fateLine',
+                    name: "Fate Line",
+                    options: [ { value: 'clearStrong' }, { value: 'faintAbsentMultiple' } ]
+                }
+            ],
+            palmLineReadings: { 
+                lifeLine: {
+                    longClear: "Your Life Line suggests a robust vitality and a life journey marked by consistent energy and resilience. You likely navigate challenges with inherent strength and maintain a steady course.",
+                    shortBroken: "Your Life Line indicates a path that may feature significant changes or periods requiring mindful attention to your well-being. These unique turns offer valuable lessons and opportunities for growth. Embrace flexibility."
+                },
+                headLine: {
+                    longStraight: "Your Head Line points to a mind that is analytical, clear, and direct. You likely excel in focused tasks, appreciate logic, and approach problem-solving with a practical mindset.",
+                    slopingForked: "Your Head Line reveals a creative, imaginative, and often intuitive intellect. You may enjoy exploring diverse ideas and perspectives, and your thinking can be wonderfully original and adaptable."
+                },
+                heartLine: {
+                    longCurvedUp: "Your Heart Line speaks of a warm, expressive emotional nature. You likely form deep connections easily, value emotional honesty, and approach relationships with generosity and empathy.",
+                    shortStraightBroken: "Your Heart Line suggests a more reserved or pragmatic approach to emotions. You might value stability and thoughtful consideration in your relationships, or experience periods of emotional reassessment."
+                },
+                fateLine: {
+                    clearStrong: "A prominent Fate Line often indicates that your life path is influenced by a clear sense of direction or that external events and opportunities play a significant role in shaping your journey. You may feel guided towards specific endeavors.",
+                    faintAbsentMultiple: "The nature of your Fate Line suggests a destiny that is largely self-made. You possess versatility and may explore multiple passions or career paths, carving out your unique way with adaptability and personal initiative."
+                }
+            },
+            // MODIFIED: elementHandDefinitions instead of elementHandQuestions
+            elementHandDefinitions: [ 
+                 {
+                    id: 'elementHand', // Keep id for consistency if needed elsewhere
+                    name: "Elemental Hand", // For potential display
+                    options: [ // These are the possible values the simulation will pick
+                        { value: 'earth', text: "Earth Hand" }, // Text for debugging or potential future display
+                        { value: 'fire', text: "Fire Hand" },
+                        { value: 'water', text: "Water Hand" },
+                        { value: 'air', text: "Air Hand" }
+                    ]
+                }
+            ],
+            elementReadings: { 
+                earth: "<strong>Earth Hand Traits:</strong> You are likely practical, reliable, and grounded. You value stability and tangible results, often possessing a strong connection to nature and a down-to-earth approach to life. You build things to last but can sometimes be resistant to change.",
+                fire: "<strong>Fire Hand Traits:</strong> You are likely passionate, ambitious, energetic, and enthusiastic. You are a natural leader, often inspiring others, but can also be impulsive or restless. You thrive on action and new challenges.",
+                water: "<strong>Water Hand Traits:</strong> You are likely intuitive, creative, empathetic, and emotionally sensitive. You navigate the world through your feelings and imagination, often possessing artistic talents and a deep understanding of others. You seek connection and can be adaptable.",
+                air: "<strong>Air Hand Traits:</strong> You are likely intellectual, communicative, analytical, and curious. You thrive on ideas, social interaction, and mental stimulation. You are often witty and logical, but can sometimes be prone to overthinking or anxiety."
+            },
+            astroSignInteractions: { 
+                 earth: {
+                    earth: "An Earth hand with an Earth astrological sign (Taurus, Virgo, Capricorn) creates a profoundly grounded and stable individual. Your practicality is doubled, making you exceptionally reliable, patient, and connected to the material world. You build with enduring strength.",
+                    air: "An Earth hand with an Air astrological sign (Gemini, Libra, Aquarius) blends practicality with intellect. You can bring abstract ideas into tangible form. Your communication is thoughtful, and you seek logical solutions to real-world problems.",
+                    fire: "An Earth hand with a Fire astrological sign (Aries, Leo, Sagittarius) combines steadfastness with dynamism. You have the energy to pursue practical goals with passion and the determination to see ambitious projects through.",
+                    water: "An Earth hand with a Water astrological sign (Cancer, Scorpio, Pisces) suggests a nurturing and deeply intuitive practicality. You ground your emotions in tangible actions and care, creating a secure and supportive environment."
+                },
+                fire: { 
+                    earth: "A Fire hand with an Earth astrological sign (Taurus, Virgo, Capricorn) channels passionate energy into practical achievements. You have the drive to make tangible progress and the stamina to pursue ambitious, real-world goals.",
+                    air: "A Fire hand with an Air astrological sign (Gemini, Libra, Aquarius) creates a dynamic communicator and innovator. Your enthusiasm fuels intellectual pursuits, and you can inspire others with your bold ideas and quick wit.",
+                    fire: "A Fire hand with a Fire astrological sign (Aries, Leo, Sagittarius) results in an intensely passionate and energetic individual. You are a force of nature, driven by enthusiasm, courage, and a desire to lead and explore.",
+                    water: "A Fire hand with a Water astrological sign (Cancer, Scorpio, Pisces) blends passionate action with deep emotional intuition. You can pursue your goals with fervor while being highly attuned to the emotional undercurrents around you."
+                },
+                water: { 
+                    earth: "A Water hand with an Earth astrological sign (Taurus, Virgo, Capricorn) suggests that your intuitive and emotional nature finds expression in practical, caring ways. You offer stable support and create beauty in the tangible world.",
+                    air: "A Water hand with an Air astrological sign (Gemini, Libra, Aquarius) combines emotional depth with intellectual curiosity. You can articulate complex feelings and ideas, fostering understanding and connection through communication.",
+                    fire: "A Water hand with a Fire astrological sign (Aries, Leo, Sagittarius) creates a dynamic individual whose emotions fuel their passions. You are likely charismatic and inspiring, channeling your sensitivity into enthusiastic action.",
+                    water: "A Water hand with a Water astrological sign (Cancer, Scorpio, Pisces) results in profound emotional depth, intuition, and empathy. You are highly attuned to the unseen world and navigate life through your feelings and creative expression."
+                },
+                air: { 
+                    earth: "An Air hand with an Earth astrological sign (Taurus, Virgo, Capricorn) grounds intellectual pursuits in practical application. You are a thoughtful planner, capable of developing logical systems and achieving tangible results through careful analysis.",
+                    air: "An Air hand with an Air astrological sign (Gemini, Libra, Aquarius) creates a highly intellectual, communicative, and social individual. You thrive on ideas, information exchange, and connecting with diverse groups of people.",
+                    fire: "An Air hand with a Fire astrological sign (Aries, Leo, Sagittarius) blends intellectual agility with passionate enthusiasm. You can articulate bold visions and inspire action through your dynamic ideas and persuasive communication.",
+                    water: "An Air hand with a Water astrological sign (Cancer, Scorpio, Pisces) suggests an ability to intellectually understand and communicate deep emotional insights. You may be a gifted counselor or writer, bridging logic and intuition."
+                }
+            },
+            astrologicalSignToElement: { 
+                aries: 'fire', taurus: 'earth', gemini: 'air', cancer: 'water',
+                leo: 'fire', virgo: 'earth', libra: 'air', scorpio: 'water',
+                sagittarius: 'fire', capricorn: 'earth', aquarius: 'air', pisces: 'water'
+            }
+        };
+
+        // --- Navigation & Screen Switching ---
+        function showScreen(screenElement) {
+            [welcomeScreen, uploadScreen, analyzingScreen, mainContentScreen].forEach(s => s.classList.add('hidden'));
+            screenElement.classList.remove('hidden');
+        }
+
+        function setActiveTab(activeTabButton, activeContentElement) {
+            [tabPalmLines, tabElement, tabAstro].forEach(btn => btn.classList.remove('active'));
+            activeTabButton.classList.add('active');
+
+            [palmLinesContent, elementTypeContent, astroPalmistryContent].forEach(content => content.classList.add('hidden'));
+            activeContentElement.classList.remove('hidden');
+        }
+        
+        startScanButton.addEventListener('click', () => showScreen(uploadScreen));
+        
+        backToWelcomeButton.addEventListener('click', () => {
+            resetAppState();
+            showScreen(welcomeScreen);
+        });
+        
+        startAnalysisButton.addEventListener('click', () => {
+            if (!uploadedImageURL) {
+                alert("Please upload an image of your palm first.");
+                return;
+            }
+            analyzingPalmImageDisplay.src = uploadedImageURL;
+            showScreen(analyzingScreen);
+
+            // Simulate analysis time and then determine line traits and elemental hand
+            setTimeout(() => {
+                simulatePalmLineAnalysis(); 
+                simulateElementalHandAnalysis(); // NEW: Simulate elemental hand analysis
+                
+                readingPalmImage.src = uploadedImageURL;
+                readingPalmImage.classList.remove('hidden');
+                // loadElementHandQuestion(); // REMOVED: No longer loading questions for element hand
+                setActiveTab(tabPalmLines, palmLinesContent);
+                showScreen(mainContentScreen);
+            }, 3500); 
+        });
+
+
+        tabPalmLines.addEventListener('click', () => setActiveTab(tabPalmLines, palmLinesContent));
+        tabElement.addEventListener('click', () => setActiveTab(tabElement, elementTypeContent));
+        tabAstro.addEventListener('click', () => setActiveTab(tabAstro, astroPalmistryContent));
+
+        scanAgainButton.addEventListener('click', () => {
+            resetAppState();
+            showScreen(welcomeScreen);
+        });
+
+        function resetAppState() {
+            palmImageInput.value = ''; 
+            palmImagePreview.src = '#'; 
+            palmImagePreview.classList.add('hidden');
+            startAnalysisButton.disabled = true;
+            uploadedImageURL = null;
+            analyzingPalmImageDisplay.src = '#';
+            readingPalmImage.src = '#';
+            readingPalmImage.classList.add('hidden');
+            
+            userSelections.palmLines = {};
+            userSelections.elementHand = null;
+            userSelections.astrologicalSign = null;
+            
+            palmLineReadingResult.innerHTML = '';
+            palmLineReadingResult.classList.add('hidden');
+            elementReadingResult.innerHTML = ''; // Clear element reading
+            elementReadingResult.classList.add('hidden');
+            astroReadingResult.innerHTML = '';
+            astroReadingResult.classList.add('hidden');
+            astrologicalSignSelect.value = ''; 
+
+            // No radio buttons to reset for element hand anymore
+        }
+
+        // --- Image Upload ---
+        palmImageInput.addEventListener('change', function(event) {
+            if (event.target.files && event.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    palmImagePreview.src = e.target.result;
+                    palmImagePreview.classList.remove('hidden');
+                    startAnalysisButton.disabled = false;
+                    uploadedImageURL = e.target.result;
+                }
+                reader.readAsDataURL(event.target.files[0]);
+            } else {
+                palmImagePreview.src = '#';
+                palmImagePreview.classList.add('hidden');
+                startAnalysisButton.disabled = true;
+                uploadedImageURL = null;
+            }
+        });
+        
+        // --- Palm Line Logic (Simulated) ---
+        function simulatePalmLineAnalysis() {
+            userSelections.palmLines = {}; 
+            palmData.palmLineDefinitions.forEach(lineDef => {
+                const randomIndex = Math.floor(Math.random() * lineDef.options.length);
+                userSelections.palmLines[lineDef.id] = lineDef.options[randomIndex].value;
+            });
+            console.log("Simulated Palm Line Analysis:", userSelections.palmLines); 
+        }
+
+        revealPalmLineInsightsButton.addEventListener('click', () => {
+            if (Object.keys(userSelections.palmLines).length === 0) {
+                simulatePalmLineAnalysis(); 
+            }
+
+            let readingHTML = `<h4 class="font-playfair text-lg mb-2">Your Palm Line Insights:</h4>`;
+            for (const lineId in userSelections.palmLines) {
+                const determinedTrait = userSelections.palmLines[lineId];
+                const lineDefinition = palmData.palmLineDefinitions.find(def => def.id === lineId);
+                
+                if (lineDefinition && palmData.palmLineReadings[lineId] && palmData.palmLineReadings[lineId][determinedTrait]) {
+                    readingHTML += `<p><strong>${lineDefinition.name}:</strong> ${palmData.palmLineReadings[lineId][determinedTrait]}</p>`;
+                }
+            }
+            readingHTML += `<p class="mt-4 text-sm text-gray-500">These interpretations offer a moment for reflection. Your path is uniquely yours to shape.</p>`;
+            palmLineReadingResult.innerHTML = readingHTML;
+            palmLineReadingResult.classList.remove('hidden');
+        });
+
+
+        // --- MODIFIED: Element Hand Logic (Simulated) ---
+        function simulateElementalHandAnalysis() {
+            const elementOptions = palmData.elementHandDefinitions[0].options;
+            const randomIndex = Math.floor(Math.random() * elementOptions.length);
+            userSelections.elementHand = elementOptions[randomIndex].value;
+            console.log("Simulated Elemental Hand:", userSelections.elementHand); // For debugging
+        }
+
+        revealElementalHandInsightsButton.addEventListener('click', () => {
+            if (!userSelections.elementHand) {
+                 // This case should ideally not happen if flow is correct
+                simulateElementalHandAnalysis();
+            }
+            
+            const reading = palmData.elementReadings[userSelections.elementHand];
+            if (reading) {
+                elementReadingResult.innerHTML = `<h4 class="font-playfair text-lg mb-2">Your Revealed Elemental Hand Nature:</h4><p>${reading}</p>`;
+                elementReadingResult.classList.remove('hidden');
+            } else {
+                elementReadingResult.innerHTML = `<p>Could not determine elemental hand insights at this time.</p>`;
+                elementReadingResult.classList.remove('hidden');
+            }
+        });
+
+
+        // --- Astro-Palmistry Logic ---
+        getAstroReadingButton.addEventListener('click', () => {
+            userSelections.astrologicalSign = astrologicalSignSelect.value;
+            
+            // Ensure simulated analysis has run for elemental hand
+            if (!userSelections.elementHand) {
+                // This is a fallback, ideally it's set after the "Analyzing..." screen
+                simulateElementalHandAnalysis(); 
+                // Optionally alert the user or just proceed
+                if (!userSelections.elementHand) { // If still not set (shouldn't happen with random assignment)
+                     alert("Elemental hand type could not be determined. Please try scanning again.");
+                     return;
+                }
+            }
+            if (!userSelections.astrologicalSign) {
+                alert("Please select your astrological sign.");
+                return;
+            }
+
+            const handElement = userSelections.elementHand; 
+            const sign = userSelections.astrologicalSign; 
+            const signElement = palmData.astrologicalSignToElement[sign]; 
+            
+            let reading = "Could not generate a specific interaction insight for this combination. However, consider how your elemental hand's traits might complement or contrast with your astrological sign's general characteristics.";
+            if (palmData.astroSignInteractions[handElement] && palmData.astroSignInteractions[handElement][signElement]) {
+                reading = palmData.astroSignInteractions[handElement][signElement];
+            }
+
+            astroReadingResult.innerHTML = `<h4 class="font-playfair text-lg mb-2">Your Astro-Palmistry Link:</h4> <p><strong>Your Revealed Hand Element:</strong> ${handElement.charAt(0).toUpperCase() + handElement.slice(1)}<br><strong>Your Astrological Sign:</strong> ${sign.charAt(0).toUpperCase() + sign.slice(1)} (Element: ${signElement.charAt(0).toUpperCase() + signElement.slice(1)})</p><p class="mt-2">${reading}</p>`;
+            astroReadingResult.classList.remove('hidden');
+        });
+        
+        // Generic function to handle styling of radio button labels (kept for potential future use, not currently used for element hand)
+        function selectRadioOption(labelElement, groupName) {
+            const radioInput = labelElement.querySelector('input[type="radio"]');
+            if (radioInput) {
+                document.querySelectorAll(`input[data-group="${groupName}"]`).forEach(input => {
+                    if (input !== radioInput) { 
+                         input.parentElement.classList.remove('selected');
+                    }
+                });
+                labelElement.classList.add('selected');
+            }
+        }
+
+        // Initial Setup
+        showScreen(welcomeScreen);
+
+    </script>
+</body>
+</html>
