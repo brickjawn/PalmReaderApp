@@ -348,12 +348,12 @@
                 </div>
             </div>
 
-            <div class="flex gap-4 mb-6">
-                <div class="flex-1 p-4 border-2 border-gray-200 rounded-lg flex flex-col">
+            <div class="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-6">
+                <div class="flex-1 p-3 sm:p-4 border-2 border-gray-200 rounded-lg flex flex-col">
                     <h3 class="font-display text-lg mb-2">Left Hand</h3>
                     <p class="text-sm text-gray-500 mb-4">Your potential & inherited traits</p>
                     <div class="relative mb-2 flex-grow">
-                        <img id="leftHandPreview" src="#" alt="Left Palm Preview" class="hidden w-full h-48 object-contain rounded-lg border border-gray-200"/>
+                        <img id="leftHandPreview" src="#" alt="Left Palm Preview" class="hidden w-full h-36 sm:h-48 object-contain rounded-lg border border-gray-200"/>
                         <button id="removeLeftImageButton" class="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full shadow-lg hidden hover:bg-red-600 transition-colors" aria-label="Remove left hand image">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -361,13 +361,13 @@
                         </button>
                     </div>
                     <input type="file" id="leftHandInput" accept="image/*" class="hidden">
-                    <button onclick="document.getElementById('leftHandInput').click()" class="button button-secondary w-full mt-auto">Upload Left Hand</button>
+                    <button onclick="document.getElementById('leftHandInput').click()" class="button button-secondary w-full mt-auto text-sm sm:text-base">Upload Left Hand</button>
                 </div>
-                <div class="flex-1 p-4 border-2 border-gray-200 rounded-lg flex flex-col">
+                <div class="flex-1 p-3 sm:p-4 border-2 border-gray-200 rounded-lg flex flex-col">
                     <h3 class="font-display text-lg mb-2">Right Hand</h3>
                     <p class="text-sm text-gray-500 mb-4">Your current path & achievements</p>
                     <div class="relative mb-2 flex-grow">
-                        <img id="rightHandPreview" src="#" alt="Right Palm Preview" class="hidden w-full h-48 object-contain rounded-lg border border-gray-200"/>
+                        <img id="rightHandPreview" src="#" alt="Right Palm Preview" class="hidden w-full h-36 sm:h-48 object-contain rounded-lg border border-gray-200"/>
                         <button id="removeRightImageButton" class="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full shadow-lg hidden hover:bg-red-600 transition-colors" aria-label="Remove right hand image">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -375,7 +375,7 @@
                         </button>
                     </div>
                     <input type="file" id="rightHandInput" accept="image/*" class="hidden">
-                    <button onclick="document.getElementById('rightHandInput').click()" class="button button-secondary w-full mt-auto">Upload Right Hand</button>
+                    <button onclick="document.getElementById('rightHandInput').click()" class="button button-secondary w-full mt-auto text-sm sm:text-base">Upload Right Hand</button>
                 </div>
             </div>
 
