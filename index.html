@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mystic Palm & Elements</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#7C3AED">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Palm Reader">
+    <link rel="apple-touch-icon" href="/icon-192x192.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands"></script>
@@ -319,6 +325,70 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--primary-dark);
         }
+
+        /* Camera Modal Styles */
+        #cameraModal {
+            backdrop-filter: blur(10px);
+        }
+
+        #cameraVideo {
+            filter: brightness(1.1) contrast(1.1);
+        }
+
+        .camera-control {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .camera-control:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .capture-button {
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .capture-button:active {
+            transform: scale(0.95);
+        }
+
+        /* Palm guide animation */
+        @keyframes pulse-guide {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.05); }
+        }
+
+        .palm-guide {
+            animation: pulse-guide 2s ease-in-out infinite;
+        }
+
+        /* Enhanced button styles for camera/gallery options */
+        .camera-gallery-btn {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .camera-gallery-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .camera-gallery-btn:hover::before {
+            left: 100%;
+        }
+
+        .camera-gallery-btn:active {
+            transform: translateY(1px);
+        }
     </style>
 </head>
 <body>
@@ -362,6 +432,14 @@
                     </div>
                     <input type="file" id="leftHandInput" accept="image/*" class="hidden">
                     <button onclick="document.getElementById('leftHandInput').click()" class="button button-secondary w-full mt-auto">Upload Left Hand</button>
+                    <div class="mt-2 flex gap-2">
+                        <button onclick="openCamera('left')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors camera-gallery-btn">
+                            📷 Camera
+                        </button>
+                        <button onclick="document.getElementById('leftHandInput').click()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors camera-gallery-btn">
+                            📁 Gallery
+                        </button>
+                    </div>
                 </div>
                 <div class="flex-1 p-4 border-2 border-gray-200 rounded-lg flex flex-col">
                     <h3 class="font-display text-lg mb-2">Right Hand</h3>
@@ -376,6 +454,14 @@
                     </div>
                     <input type="file" id="rightHandInput" accept="image/*" class="hidden">
                     <button onclick="document.getElementById('rightHandInput').click()" class="button button-secondary w-full mt-auto">Upload Right Hand</button>
+                    <div class="mt-2 flex gap-2">
+                        <button onclick="openCamera('right')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors camera-gallery-btn">
+                            📷 Camera
+                        </button>
+                        <button onclick="document.getElementById('rightHandInput').click()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors camera-gallery-btn">
+                            📁 Gallery
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -446,6 +532,59 @@
 
     </div>
 
+    <!-- Camera Modal -->
+    <div id="cameraModal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden">
+        <div class="flex flex-col h-full">
+            <!-- Header -->
+            <div class="flex justify-between items-center p-4 bg-black bg-opacity-50 text-white">
+                <h3 class="text-lg font-semibold" id="cameraTitle">Capture Your Palm</h3>
+                <button onclick="closeCamera()" class="text-white hover:text-gray-300 text-2xl font-bold">
+                    ×
+                </button>
+            </div>
+            
+            <!-- Camera Container -->
+            <div class="flex-1 relative">
+                <video id="cameraVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+                <canvas id="cameraCanvas" class="hidden"></canvas>
+                
+                <!-- Camera Overlay -->
+                <div class="absolute inset-0 flex flex-col justify-between p-4">
+                    <!-- Top overlay -->
+                    <div class="text-center">
+                        <div class="bg-black bg-opacity-50 text-white px-4 py-2 rounded-full inline-block">
+                            <span id="cameraInstructions">Position your palm in the frame</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Bottom controls -->
+                    <div class="flex justify-center items-center space-x-8 pb-8">
+                        <button onclick="switchCamera()" class="camera-control text-white p-3 rounded-full transition-all">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                        </button>
+                        
+                        <button onclick="capturePhoto()" class="capture-button bg-white hover:bg-gray-100 p-4 rounded-full transition-all shadow-lg">
+                            <div class="w-12 h-12 rounded-full border-4 border-gray-300"></div>
+                        </button>
+                        
+                        <button onclick="toggleFlash()" class="camera-control text-white p-3 rounded-full transition-all">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Palm guide overlay -->
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div class="w-64 h-64 border-2 border-white border-dashed rounded-full opacity-50 palm-guide"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer class="w-full max-w-2xl mx-auto px-4 py-8 text-center">
         <div class="mb-4">
             <a href="https://twitter.com/crocboot" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-primary hover:text-primary-dark transition-colors">
@@ -463,6 +602,243 @@
     <script>
         // Wrap everything in DOMContentLoaded to ensure elements exist
         document.addEventListener('DOMContentLoaded', function() {
+            // Register Service Worker
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js')
+                        .then((registration) => {
+                            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        })
+                        .catch((error) => {
+                            console.log('ServiceWorker registration failed: ', error);
+                        });
+                });
+            }
+
+            // Camera functionality
+            let currentStream = null;
+            let currentHand = null;
+            let facingMode = 'environment'; // Start with back camera
+            let flashEnabled = false;
+
+            // Camera functions
+            window.openCamera = async function(hand) {
+                currentHand = hand;
+                const modal = document.getElementById('cameraModal');
+                const title = document.getElementById('cameraTitle');
+                const instructions = document.getElementById('cameraInstructions');
+                
+                title.textContent = `Capture Your ${hand.charAt(0).toUpperCase() + hand.slice(1)} Hand`;
+                instructions.textContent = `Position your ${hand} palm in the frame`;
+                
+                modal.classList.remove('hidden');
+                
+                try {
+                    await startCamera();
+                } catch (error) {
+                    console.error('Camera error:', error);
+                    showErrorMessage('Camera access denied. Please use gallery upload instead.', hand);
+                    closeCamera();
+                }
+            };
+
+            window.closeCamera = function() {
+                const modal = document.getElementById('cameraModal');
+                modal.classList.add('hidden');
+                stopCamera();
+            };
+
+            window.switchCamera = async function() {
+                facingMode = facingMode === 'environment' ? 'user' : 'environment';
+                await startCamera();
+            };
+
+            window.toggleFlash = function() {
+                flashEnabled = !flashEnabled;
+                // Note: Flash control is limited in web browsers
+                console.log('Flash toggled:', flashEnabled);
+            };
+
+            window.capturePhoto = function() {
+                const video = document.getElementById('cameraVideo');
+                const canvas = document.getElementById('cameraCanvas');
+                const context = canvas.getContext('2d');
+                
+                // Set canvas size to match video
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Draw video frame to canvas
+                context.drawImage(video, 0, 0);
+                
+                // Convert to blob
+                canvas.toBlob((blob) => {
+                    const file = new File([blob], `${currentHand}_hand.jpg`, { type: 'image/jpeg' });
+                    
+                    // Create a fake event object
+                    const event = {
+                        target: {
+                            files: [file]
+                        }
+                    };
+                    
+                    // Show capture feedback
+                    const captureFeedback = document.createElement('div');
+                    captureFeedback.className = 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white text-green-600 px-6 py-3 rounded-lg shadow-lg z-50 text-center';
+                    captureFeedback.innerHTML = `
+                        <div class="flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span>Photo captured!</span>
+                        </div>
+                    `;
+                    document.body.appendChild(captureFeedback);
+                    
+                    // Process the captured image
+                    handleFileUpload(event, currentHand);
+                    
+                    setTimeout(() => {
+                        if (captureFeedback.parentNode) {
+                            captureFeedback.parentNode.removeChild(captureFeedback);
+                        }
+                        closeCamera();
+                    }, 1000);
+                }, 'image/jpeg', 0.9);
+            };
+
+            async function startCamera() {
+                stopCamera();
+                
+                const constraints = {
+                    video: {
+                        facingMode: facingMode,
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                };
+                
+                try {
+                    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    const video = document.getElementById('cameraVideo');
+                    video.srcObject = currentStream;
+                    
+                    // Wait for video to be ready
+                    return new Promise((resolve) => {
+                        video.onloadedmetadata = () => {
+                            resolve();
+                        };
+                    });
+                } catch (error) {
+                    console.error('Error accessing camera:', error);
+                    throw error;
+                }
+            }
+
+            function stopCamera() {
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                    currentStream = null;
+                }
+            }
+
+            // Utility functions
+            function showErrorMessage(message, hand) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 max-w-md text-center';
+                errorDiv.innerHTML = `
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>${message}</span>
+                    </div>
+                `;
+                document.body.appendChild(errorDiv);
+                
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.parentNode.removeChild(errorDiv);
+                    }
+                }, 5000);
+            }
+
+            function showScreen(screen) {
+                // Hide all screens
+                [welcomeScreen, uploadScreen, analyzingScreen, mainContentScreen].forEach(s => {
+                    if (s) s.classList.add('hidden');
+                });
+                
+                // Show target screen
+                if (screen) screen.classList.remove('hidden');
+            }
+
+            function setActiveTab(activeTab, activeContent) {
+                // Remove active class from all tabs
+                [tabPalmLines, tabElement, tabAstro].forEach(tab => {
+                    if (tab) tab.classList.remove('active');
+                });
+                
+                // Hide all content
+                [palmLinesContent, elementTypeContent, astroPalmistryContent].forEach(content => {
+                    if (content) content.classList.add('hidden');
+                });
+                
+                // Activate selected tab and content
+                if (activeTab) activeTab.classList.add('active');
+                if (activeContent) activeContent.classList.remove('hidden');
+            }
+
+            function resetAppState() {
+                // Reset user selections
+                userSelections.palmLines = { left: {}, right: {} };
+                userSelections.elementHand = { left: null, right: null };
+                userSelections.astrologicalSign = null;
+                
+                // Reset uploaded images
+                uploadedImages.left = null;
+                uploadedImages.right = null;
+                uploadedImages.leftQuality = null;
+                uploadedImages.rightQuality = null;
+                
+                // Reset UI
+                if (leftHandPreview) {
+                    leftHandPreview.src = '#';
+                    leftHandPreview.classList.add('hidden');
+                }
+                if (rightHandPreview) {
+                    rightHandPreview.src = '#';
+                    rightHandPreview.classList.add('hidden');
+                }
+                if (removeLeftImageButton) removeLeftImageButton.classList.add('hidden');
+                if (removeRightImageButton) removeRightImageButton.classList.add('hidden');
+                if (leftHandInput) leftHandInput.value = '';
+                if (rightHandInput) rightHandInput.value = '';
+                
+                // Reset reading results
+                if (palmLineReadingResult) {
+                    palmLineReadingResult.innerHTML = '';
+                    palmLineReadingResult.classList.add('hidden');
+                }
+                if (elementReadingResult) {
+                    elementReadingResult.innerHTML = '';
+                    elementReadingResult.classList.add('hidden');
+                }
+                if (astroReadingResult) {
+                    astroReadingResult.innerHTML = '';
+                    astroReadingResult.classList.add('hidden');
+                }
+                
+                // Show buttons again
+                if (revealPalmLineInsightsButton) revealPalmLineInsightsButton.classList.remove('hidden');
+                if (revealElementalHandInsightsButton) revealElementalHandInsightsButton.classList.remove('hidden');
+                
+                // Reset image display
+                if (readingPalmImage) readingPalmImage.classList.add('hidden');
+                
+                updateUploadStatus();
+            }
+
             // DOM Elements
             const welcomeScreen = document.getElementById('welcomeScreen');
             const uploadScreen = document.getElementById('uploadScreen');
