@@ -1,12 +1,30 @@
-const CACHE_NAME = 'palm-reader-v1.0';
-const urlsToCache = [
-  '/',
-  '/index.html',
+// Change this to your repository name
+var GHPATH = '/PalmReaderApp';
+
+// Choose a different app prefix name
+var APP_PREFIX = 'palmreader_';
+
+// The version of the cache. Every time you change any of the files
+// you need to change this version (version_01, version_02…). 
+// If you don't change the version, the service worker will give your
+// users the old files!
+var VERSION = 'version_01';
+
+// The files to make available for offline use. make sure to add 
+// others to this list
+var URLS = [    
+  `${GHPATH}/`,
+  `${GHPATH}/index.html`,
+  `${GHPATH}/manifest.json`,
+  `${GHPATH}/sw.js`,
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs',
   'https://cdn.jsdelivr.net/npm/@mediapipe/hands',
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap'
 ];
+
+var CACHE_NAME = APP_PREFIX + VERSION;
+var urlsToCache = URLS;
 
 // Install event - cache resources
 self.addEventListener('install', (event) => {
@@ -56,7 +74,7 @@ self.addEventListener('fetch', (event) => {
       .catch(() => {
         // If both cache and network fail, show offline page
         if (event.request.destination === 'document') {
-          return caches.match('/index.html');
+          return caches.match(`${GHPATH}/index.html`);
         }
       })
   );
@@ -96,8 +114,8 @@ function doBackgroundSync() {
 self.addEventListener('push', (event) => {
   const options = {
     body: event.data ? event.data.text() : 'New palm reading insights available!',
-    icon: '/icon-192x192.png',
-    badge: '/badge-72x72.png',
+    icon: `${GHPATH}/icon.svg`,
+    badge: `${GHPATH}/icon.svg`,
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -107,12 +125,12 @@ self.addEventListener('push', (event) => {
       {
         action: 'explore',
         title: 'View Reading',
-        icon: '/icon-192x192.png'
+        icon: `${GHPATH}/icon.svg`
       },
       {
         action: 'close',
         title: 'Close',
-        icon: '/icon-192x192.png'
+        icon: `${GHPATH}/icon.svg`
       }
     ]
   };
@@ -130,7 +148,7 @@ self.addEventListener('notificationclick', (event) => {
   
   if (event.action === 'explore') {
     event.waitUntil(
-      clients.openWindow('/')
+      clients.openWindow(`${GHPATH}/`)
     );
   }
 }); 
