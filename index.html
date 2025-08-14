@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mystic Palm & Elements</title>
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/PalmReaderApp/manifest.json">
     <meta name="theme-color" content="#7C3AED">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -605,7 +605,7 @@
             // Register Service Worker
             if ('serviceWorker' in navigator) {
                 window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/sw.js')
+                    navigator.serviceWorker.register('/PalmReaderApp/sw.js', {scope: '/PalmReaderApp/'})
                         .then((registration) => {
                             console.log('ServiceWorker registration successful with scope: ', registration.scope);
                         })

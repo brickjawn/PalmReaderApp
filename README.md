@@ -2,6 +2,17 @@
 
 A modern, interactive palm reading web application that combines palmistry with elemental and astrological insights. Built with vanilla JavaScript and styled with Tailwind CSS for a beautiful, responsive user experience.
 
+## 🌐 Live Demo
+
+**Try the app now:** [Mystic Palm & Elements PWA](https://brickjawn.github.io/PalmReaderApp/)
+
+**PWA Features:**
+- 📱 Install as a mobile app
+- 📷 Direct camera access for palm photos
+- 🔄 Offline functionality
+- ⚡ Fast loading with service worker
+- 🎨 Beautiful responsive design
+
 ## 📸 Screenshots
 
 ### Upload Interface
@@ -16,10 +27,11 @@ A modern, interactive palm reading web application that combines palmistry with 
 - **📝 Palm Line Analysis**: Detailed analysis of life, head, heart, fate, and sun lines with mystical interpretations
 - **🌊 Elemental Hand Type**: Discover your hand's elemental nature (Fire, Earth, Air, or Water)
 - **⭐ Astro-Palmistry Integration**: Explore connections between your palm characteristics and astrological sign
+- **📷 Camera Integration**: Direct photo capture with camera controls and flash support
 - **🎨 Trippy Animated Background**: Mesmerizing gradient shifts and floating orbs create an immersive experience
 - **🤖 AI Hand Detection**: Advanced validation ensures only hand images are processed (powered by TensorFlow.js & MediaPipe)
 - **💎 Glass-Effect UI**: Modern glassmorphism design with backdrop blur effects
-- **📱 Responsive Design**: Fully functional across all device sizes
+- **📱 PWA Support**: Install as a mobile app with offline functionality
 - **🔄 Smooth Transitions**: Elegant screen transitions and loading animations
 
 ## 🎭 Reading Types
@@ -38,14 +50,25 @@ A modern, interactive palm reading web application that combines palmistry with 
 
 ## 🚀 Quick Start
 
+### Option 1: Live Demo (Recommended)
+Visit the live PWA: [https://brickjawn.github.io/PalmReaderApp/](https://brickjawn.github.io/PalmReaderApp/)
+
+### Option 2: Local Development
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/PalmReaderApp.git
+git clone https://github.com/brickjawn/PalmReaderApp.git
 ```
 
 2. Open `index.html` in your web browser
 
 That's it! No build process or dependencies to install.
+
+### Option 3: Deploy to GitHub Pages
+1. Fork this repository
+2. Go to Settings > Pages
+3. Select "Deploy from a branch"
+4. Choose `gh-pages` branch
+5. Your PWA will be available at `https://yourusername.github.io/PalmReaderApp/`
 
 ## 💻 Technology Stack
 
