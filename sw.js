@@ -8,19 +8,16 @@ var APP_PREFIX = 'palmreader_';
 // you need to change this version (version_01, version_02…). 
 // If you don't change the version, the service worker will give your
 // users the old files!
-var VERSION = 'version_01';
+var VERSION = 'version_02';
 
 // The files to make available for offline use. make sure to add 
 // others to this list
+// Note: External CDN resources are not cached - they're fetched directly by the browser
 var URLS = [    
   `${GHPATH}/`,
   `${GHPATH}/index.html`,
   `${GHPATH}/manifest.json`,
-  `${GHPATH}/sw.js`,
-  'https://cdn.tailwindcss.com',
-  'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs',
-  'https://cdn.jsdelivr.net/npm/@mediapipe/hands',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap'
+  `${GHPATH}/icon.svg`
 ];
 
 var CACHE_NAME = APP_PREFIX + VERSION;
@@ -43,40 +40,51 @@ self.addEventListener('install', (event) => {
 
 // Fetch event - serve from cache when offline
 self.addEventListener('fetch', (event) => {
+  const url = event.request.url;
+  
+  // Skip external CDN and WASM requests - let browser handle directly
+  if (url.includes('cdn.jsdelivr.net') || 
+      url.includes('cdn.tailwindcss.com') || 
+      url.includes('fonts.googleapis.com') ||
+      url.includes('fonts.gstatic.com') ||
+      url.endsWith('.wasm')) {
+    return; // Don't call event.respondWith - browser fetches normally
+  }
+  
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        if (response) {
-          return response;
+    (async () => {
+      try {
+        // Try to get from cache first
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) {
+          return cachedResponse;
         }
         
         // Clone the request because it's a stream
         const fetchRequest = event.request.clone();
+        const response = await fetch(fetchRequest);
         
-        return fetch(fetchRequest).then((response) => {
-          // Check if we received a valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-          
-          // Clone the response because it's a stream
-          const responseToCache = response.clone();
-          
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          
+        // Check if we received a valid response
+        if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
-        });
-      })
-      .catch(() => {
-        // If both cache and network fail, show offline page
+        }
+        
+        // Clone the response because it's a stream
+        const responseToCache = response.clone();
+        
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(event.request, responseToCache);
+        
+        return response;
+      } catch (error) {
+        console.error('Fetch handler error:', error);
+        // If both cache and network fail, show offline page for documents
         if (event.request.destination === 'document') {
           return caches.match(`${GHPATH}/index.html`);
         }
-      })
+        return new Response('Network error', { status: 503, statusText: 'Service Unavailable' });
+      }
+    })()
   );
 });
 
