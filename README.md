@@ -119,7 +119,7 @@ Palmistry is widely considered a form of cultural, historical, and entertainment
 
 ## 📱 Connect
 
-Follow me on X [@crocboot](https://twitter.com/crocboot)
+Follow me on X [@zoo_mind](https://twitter.com/zoo_mind)
 
 ## 📄 License
 
