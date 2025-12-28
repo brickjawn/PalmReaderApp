@@ -8,7 +8,7 @@ var APP_PREFIX = 'palmreader_';
 // you need to change this version (version_01, version_02…). 
 // If you don't change the version, the service worker will give your
 // users the old files!
-var VERSION = 'version_05';
+var VERSION = 'version_06';
 
 // The files to make available for offline use. make sure to add 
 // others to this list
@@ -39,75 +39,14 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Fetch event - serve from cache when offline
+// Fetch event - let browser handle all requests
+// Note: We don't intercept fetch requests because:
+// 1. The app relies on external CDNs (TensorFlow, Tailwind) that can't be cached reliably
+// 2. This prevents SW caching issues while keeping other SW features (push notifications) working
+// 3. True offline support isn't possible anyway due to CDN dependencies
 self.addEventListener('fetch', (event) => {
-  const url = event.request.url;
-  
-  // Skip external CDN, WASM, and non-http requests - let browser handle directly
-  if (!url.startsWith('http') ||
-      url.includes('cdn.jsdelivr.net') || 
-      url.includes('cdn.tailwindcss.com') || 
-      url.includes('fonts.googleapis.com') ||
-      url.includes('fonts.gstatic.com') ||
-      url.includes('chrome-extension://') ||
-      url.endsWith('.wasm')) {
-    return;
-  }
-  
-  // Only handle requests for our own app path
-  let pathname;
-  try {
-    pathname = new URL(url).pathname;
-  } catch (e) {
-    return;
-  }
-  
-  if (!pathname.startsWith(GHPATH)) {
-    return;
-  }
-  
-  // Navigation requests (HTML pages) - use network-first with bulletproof fallback
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          // Cache the fresh response
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-        .then((response) => response || caches.match(`${GHPATH}/index.html`))
-        .then((response) => response || new Response('Offline', { 
-          status: 503, 
-          headers: { 'Content-Type': 'text/html' } 
-        }))
-    );
-    return;
-  }
-  
-  // Static assets - use cache-first strategy
-  event.respondWith(
-    caches.match(event.request)
-      .then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(event.request.clone())
-          .then((response) => {
-            if (response && response.status === 200 && response.type === 'basic') {
-              const responseToCache = response.clone();
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-            }
-            return response;
-          });
-      })
-      .then((response) => response || new Response('Not found', { status: 404 }))
-  );
+  // Don't call event.respondWith() - let browser handle everything normally
+  return;
 });
 
 // Activate event - clean up old caches and take control
