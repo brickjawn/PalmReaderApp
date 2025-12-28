@@ -8,7 +8,7 @@ var APP_PREFIX = 'palmreader_';
 // you need to change this version (version_01, version_02…). 
 // If you don't change the version, the service worker will give your
 // users the old files!
-var VERSION = 'version_02';
+var VERSION = 'version_03';
 
 // The files to make available for offline use. make sure to add 
 // others to this list
@@ -26,6 +26,7 @@ var urlsToCache = URLS;
 // Install event - cache resources
 self.addEventListener('install', (event) => {
   console.log('Service Worker installing...');
+  self.skipWaiting(); // Force immediate activation
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -42,66 +43,77 @@ self.addEventListener('install', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
   
-  // Skip external CDN and WASM requests - let browser handle directly
+  // Skip external CDN, WASM, and chrome-extension requests - let browser handle directly
   if (url.includes('cdn.jsdelivr.net') || 
       url.includes('cdn.tailwindcss.com') || 
       url.includes('fonts.googleapis.com') ||
       url.includes('fonts.gstatic.com') ||
-      url.endsWith('.wasm')) {
+      url.includes('chrome-extension://') ||
+      url.endsWith('.wasm') ||
+      !url.startsWith('http')) {
     return; // Don't call event.respondWith - browser fetches normally
   }
   
+  // Only handle requests for our own origin
+  const requestUrl = new URL(url);
+  if (!requestUrl.pathname.startsWith(GHPATH)) {
+    return; // Not our app, let browser handle
+  }
+  
   event.respondWith(
-    (async () => {
-      try {
-        // Try to get from cache first
-        const cachedResponse = await caches.match(event.request);
+    caches.match(event.request)
+      .then((cachedResponse) => {
         if (cachedResponse) {
           return cachedResponse;
         }
         
-        // Clone the request because it's a stream
-        const fetchRequest = event.request.clone();
-        const response = await fetch(fetchRequest);
-        
-        // Check if we received a valid response
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
-        }
-        
-        // Clone the response because it's a stream
-        const responseToCache = response.clone();
-        
-        const cache = await caches.open(CACHE_NAME);
-        cache.put(event.request, responseToCache);
-        
-        return response;
-      } catch (error) {
+        return fetch(event.request.clone())
+          .then((response) => {
+            // Check if we received a valid response
+            if (!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
+            }
+            
+            // Clone the response and cache it
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+            
+            return response;
+          });
+      })
+      .catch((error) => {
         console.error('Fetch handler error:', error);
         // If both cache and network fail, show offline page for documents
         if (event.request.destination === 'document') {
-          return caches.match(`${GHPATH}/index.html`);
+          return caches.match(`${GHPATH}/index.html`)
+            .then((fallback) => fallback || new Response('Offline', { status: 503 }));
         }
         return new Response('Network error', { status: 503, statusText: 'Service Unavailable' });
-      }
-    })()
+      })
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches and take control
 self.addEventListener('activate', (event) => {
   console.log('Service Worker activating...');
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches.keys()
+      .then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME) {
+              console.log('Deleting old cache:', cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+      .then(() => {
+        console.log('Service Worker now controlling all clients');
+        return self.clients.claim(); // Take control of all pages immediately
+      })
   );
 });
 
